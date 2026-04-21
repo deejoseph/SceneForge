@@ -1,5 +1,10 @@
-__pycache__/
+# 忽略 Python 缓存
+**/__pycache__/
 *.pyc
-.env
-outputs/
-node_modules/
+
+# 忽略虚拟环境 (根据你的目录结构)
+ai_backend/
+
+# 忽略日志和临时输出
+*.log
+output/

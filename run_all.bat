@@ -2,24 +2,27 @@
 chcp 65001 > nul
 setlocal enabledelayedexpansion
 
-REM ===== 配置路径（按你当前路径写）=====
+REM ===== 配置路径 =====
 set "COMFY_ROOT=D:\PixelSmile\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable"
 set "PROJECT_ROOT=D:\PixelSmile\SceneForge"
 set "ENV_NAME=ai_backend"
 
+REM ===== 显存优化参数 =====
+set CUDA_MODULE_LOADING=LAZY
+set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 REM ===== 1️⃣ 启动 ComfyUI =====
-echo [1/3] Starting ComfyUI...
+echo [1/4] 正在启动 ComfyUI (后端绘图引擎)...
 start "ComfyUI" /min "%COMFY_ROOT%\python_embeded\python.exe" ^
   -s "%COMFY_ROOT%\ComfyUI\main.py" ^
   --windows-standalone-build ^
-  --lowvram
+  --lowvram ^
+  --preview-method auto
 
-REM 等待 ComfyUI 启动
 timeout /t 8 /nobreak > nul
 
 REM ===== 2️⃣ 激活 conda 环境 =====
-echo [2/3] Activating conda env...
-
+echo [2/4] 正在激活 AI 后端环境: %ENV_NAME%...
 where conda >nul 2>nul
 if %ERRORLEVEL%==0 (
     call conda activate %ENV_NAME%
@@ -29,22 +32,27 @@ if %ERRORLEVEL%==0 (
     if defined CONDA_BAT (call "%CONDA_BAT%" activate %ENV_NAME%)
 )
 
-REM ===== 3️⃣ 启动 FastAPI =====
-echo [3/3] Starting FastAPI backend...
+REM ===== 3️⃣ 启动 FastAPI 后端 =====
+echo [3/4] 正在启动定制系统业务逻辑 (Port 8000)...
 cd /d "%PROJECT_ROOT%"
-
 start "Backend" cmd /k uvicorn main:app --reload --port 8000
 
-REM ===== 可选：启动前端 =====
-REM 如果你用 vite/react，可以取消下面注释
+REM 等待后端启动完成
+timeout /t 3 /nobreak > nul
 
-REM start "Frontend" cmd /k npm run dev
+REM ===== 4️⃣ 启动前端静态服务器并打开浏览器 =====
+echo [4/4] 正在启动前端界面并自动打开浏览器 (Port 8080)...
+# 使用 start /min 隐藏静态服务器窗口，避免桌面太乱
+start "Frontend_Server" /min python -m http.server 8080
 
-echo =====================================
-echo   AI Ceramic System is Running
-echo =====================================
-echo ComfyUI:  http://127.0.0.1:8188
-echo Backend:  http://127.0.0.1:8000/docs
-echo =====================================
+# 自动调用系统默认浏览器打开页面
+start http://127.0.0.1:8080/index.html
 
+echo ===============================================
+echo      青瓷定制氛围确认系统 - 启动完成
+echo ===============================================
+echo  前端访问: http://127.0.0.1:8080/index.html
+echo  后端接口: http://127.0.0.1:8000/docs
+echo ===============================================
+echo  提示：请保持所有窗口开启。关闭此窗口不会停止后台服务。
 pause

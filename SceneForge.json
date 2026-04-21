@@ -1,145 +1,69 @@
 {
   "1": {
     "inputs": {
-      "ckpt_name": "dreamshaper_8.safetensors"
+      "ckpt_name": "realisticVisionV60B1_v51HyperVAE.safetensors"
     },
-    "class_type": "CheckpointLoaderSimple",
-    "_meta": {
-      "title": "Checkpoint加载器（简易）"
-    }
+    "class_type": "CheckpointLoaderSimple"
   },
   "2": {
     "inputs": {
-      "lora_name": "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
+      "lora_name": "CeramicXL_LoRA.safetensors",
       "strength_model": 0.6,
-      "strength_clip": 0.6,
-      "model": [
-        "1",
-        0
-      ],
-      "clip": [
-        "1",
-        1
-      ]
+      "strength_clip": 1.0,
+      "model": ["1", 0],
+      "clip": ["1", 1]
     },
-    "class_type": "LoraLoader",
-    "_meta": {
-      "title": "加载LoRA"
-    }
+    "class_type": "LoraLoader"
   },
   "3": {
     "inputs": {
-      "lora_name": "CeramicXL_LoRA.safetensors",
-      "strength_model": 0.5,
-      "strength_clip": 0.5,
-      "model": [
-        "2",
-        0
-      ],
-      "clip": [
-        "2",
-        1
-      ]
+      "text": "MASTERPIECE, cinematic atmosphere, (celadon tea set:1.2), soft lighting, large negative space, minimalist composition, highly detailed environment",
+      "clip": ["2", 1]
     },
-    "class_type": "LoraLoader",
-    "_meta": {
-      "title": "加载LoRA"
-    }
+    "class_type": "CLIPTextEncode"
   },
   "4": {
     "inputs": {
-      "text": "a celadon ceramic tea cup centered on a wooden tea table, elegant minimalist zen tea room background, soft natural lighting, subtle shadows, jade-like glaze, handcrafted texture, clean composition, high-end product photography, focus on material and form, no distraction",
-      "clip": [
-        "3",
-        1
-      ]
+      "text": "blurry, low quality, distorted shapes, messy room, cluttered background, unrealistic lighting, deformed teapot, two spouts, extra spout, missing handle, deformed structure, invalid product design, symmetrical spouts",
+      "clip": ["2", 1]
     },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "CLIP文本编码"
-    }
+    "class_type": "CLIPTextEncode"
   },
   "5": {
     "inputs": {
-      "text": "blurry, low quality, distorted, bad anatomy, cluttered background, messy composition, too many objects, plastic texture, artificial colors, watermark, text",
-      "clip": [
-        "3",
-        1
-      ]
+      "width": 1344,
+      "height": 768,
+      "batch_size": 1
     },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "CLIP文本编码"
-    }
+    "class_type": "EmptyLatentImage"
   },
   "6": {
     "inputs": {
-      "width": 832,
-      "height": 1472,
-      "batch_size": 1
+      "seed": 123456789,
+      "steps": 8,
+      "cfg": 2.0,
+      "sampler_name": "dpmpp_sde",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": ["2", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
     },
-    "class_type": "EmptyLatentImage",
-    "_meta": {
-      "title": "空Latent图像"
-    }
+    "class_type": "KSampler"
   },
   "7": {
     "inputs": {
-      "seed": 1650338057631,
-      "steps": 20,
-      "cfg": 7,
-      "sampler_name": "dpmpp_2m",
-      "scheduler": "karras",
-      "denoise": 1,
-      "model": [
-        "3",
-        0
-      ],
-      "positive": [
-        "4",
-        0
-      ],
-      "negative": [
-        "5",
-        0
-      ],
-      "latent_image": [
-        "6",
-        0
-      ]
+      "samples": ["6", 0],
+      "vae": ["1", 2]
     },
-    "class_type": "KSampler",
-    "_meta": {
-      "title": "K采样器"
-    }
+    "class_type": "VAEDecode"
   },
   "8": {
     "inputs": {
-      "samples": [
-        "7",
-        0
-      ],
-      "vae": [
-        "1",
-        2
-      ]
+      "filename_prefix": "SceneForge_Vibe",
+      "images": ["7", 0]
     },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE解码"
-    }
-  },
-  "9": {
-    "inputs": {
-      "filename_prefix": "ceramic_ai",
-      "images": [
-        "8",
-        0
-      ]
-    },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "保存图像"
-    }
+    "class_type": "SaveImage"
   }
 }
