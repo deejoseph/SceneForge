@@ -5,7 +5,7 @@
 <title>青瓷定制 - 场景氛围确认系统</title>
 <style>
   :root { --primary-color: #4a6a5e; --bg-color: #fcfcfc; }
-  body { font-family: "Microsoft YaHei", sans-serif; padding: 40 :rootpx; background: var(--bg-color); color: #333; line-height: 1.6; }
+  body { font-family: "Microsoft YaHei", sans-serif; padding: 40px; background: var(--bg-color); color: #333; line-height: 1.6; }
   h2, h3 { color: var(--primary-color); }
   #progress { width: 100%; height: 6px; background: #eee; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
   #bar { height: 100%; width: 0%; background: var(--primary-color); transition: 0.5s; }
@@ -15,7 +15,7 @@
   #topControls { margin-bottom: 30px; display: flex; gap: 15px; }
   button { padding: 10px 20px; border: 1px solid var(--primary-color); background: white; color: var(--primary-color); cursor: pointer; border-radius: 4px; transition: 0.2s; }
   button:hover { background: var(--primary-color); color: white; }
-  .btn-main { background: var(--primary-color); color: white; font-weight: bold; }
+  .btn-main { background: var(--primary-color); color: white; font-weight: bold; border: none; }
   .options-grid { display: flex; gap: 10px; margin-top: 10px; }
   #generator { margin-top: 60px; border-top: 1px solid #ddd; padding-top: 40px; }
   #finalPromptBox { background: #f0f4f2; padding: 20px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; font-size: 15px; }
@@ -25,21 +25,38 @@
   #loading { display: none; color: var(--primary-color); font-weight: bold; margin: 20px 0; }
   #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000; }
   #modal img { max-width: 90%; max-height: 90%; border: 2px solid #fff; }
+  
+  /* 留言框样式 */
+  .custom-area { margin: 20px 0; }
+  #customInput { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
 </style>
 </head>
 <body>
 
 <h2>青瓷定制引导：场景确认</h2>
-<p style="color:#666;">请选择心仪展示场景，生成氛围参考图。</p>
+<p style="color:#666;">通过简单的选择，我们将为您生成专属的展示氛围参考图。</p>
 
 <div id="progress"><div id="bar"></div></div>
+
 <div id="topControls">
   <button id="prevBtn" onclick="prevStep()">⬅ 上一步</button>
   <button id="nextBtn" onclick="nextAuto()">下一步 ➡</button>
   <button onclick="resetAll()">🔄 重新开始</button>
 </div>
 
-<div class="step active" id="step1">
+<div class="step active" id="step0">
+  <h3>0. 选择渲染模式与风格</h3>
+  <div class="options-grid">
+    <button onclick="setChoice('model_type', 'realistic', '高清写实', 'step1')">高清写实 (旗舰引擎)</button>
+    <button onclick="setChoice('model_type', 'artistic', '意境艺术', 'step1')">意境艺术 (旗舰引擎)</button>
+    <button onclick="setChoice('model_type', 'fast', '快速预览', 'step1')">快速预览 (轻量引擎)</button>
+  </div>
+  <p style="font-size: 12px; color: #888; margin-top: 10px;">
+    * 注：<b>旗舰引擎</b> 采用 SDXL 架构，适合最终效果确认；<b>轻量引擎</b> 速度极快，适合初期构图调整。
+  </p>
+</div>
+
+<div class="step" id="step1">
   <h3>1. 您的定制用途是？</h3>
   <div class="options-grid">
     <button onclick="setChoice('purpose', 'self', '个人收藏', 'step2_pack')">自己收藏/日常使用</button>
@@ -77,22 +94,32 @@
 
 <div id="generator">
   <h2>氛围预览生成</h2>
+  
   <div id="finalPromptBox">
     <strong>当前选择：</strong> <span id="summaryText">尚未完成选择</span>
   </div>
-  <button class="btn-main" id="genBtn" onclick="generate()" style="padding: 15px 40px; font-size: 18px;">生成场景预览</button>
-  <div id="loading">正在渲染参考图，预计 30 秒...</div>
+
+  <div class="custom-area">
+    <label style="font-weight: bold; display: block; margin-bottom: 8px;">特别要求/客户留言：</label>
+    <input type="text" id="customInput" placeholder="在此输入额外需求，如：背景有一支梅花、窗外在下雨、桌面有水渍感等...">
+  </div>
+
+  <button class="btn-main" id="genBtn" onclick="generate()" style="padding: 15px 40px; font-size: 18px;">开始 AI 渲染生成</button>
+  
+  <div id="loading">AI 正在根据您的选择进行多场景渲染，预计需要 30 秒，请稍候...</div>
   <div id="results"></div>
 </div>
 
 <div id="modal" onclick="closeModal()"><img id="modalImg"></div>
 
 <script>
-let steps = ["step1", "step2_pack", "step4", "step5"];
+// 更新后的步骤数组，包含 step0
+let steps = ["step0", "step1", "step2_pack", "step4", "step5"];
 let currentStepIndex = 0;
 
-// 保持扁平结构，增加 label 用于显示
 let formData = {
+  model_type: "realistic", 
+  model_label: "写实摄影",
   purpose: "self", purpose_label: "个人收藏",
   packaging: "none", packaging_label: "简约环保",
   scene: "", scene_label: "未选",
@@ -104,6 +131,7 @@ function updateProgress() {
   let percent = (currentStepIndex / (steps.length - 1)) * 100;
   document.getElementById("bar").style.width = percent + "%";
   document.getElementById("prevBtn").disabled = currentStepIndex === 0;
+  document.getElementById("nextBtn").disabled = currentStepIndex === steps.length - 1;
 }
 
 function showStep(id) {
@@ -122,25 +150,30 @@ function setChoice(key, id, label, nextId) {
   
   if (key === 'mood') {
     const moodMap = {
-      "zen": "wabi-sabi, cinematic fog, tea smoke, natural light",
+      "zen": "wabi-sabi, cinematic fog, tea smoke",
       "warm": "warm glow, golden hour, wooden textures",
       "luxury": "high contrast, studio lighting, elegant reflections"
     };
     formData.style = moodMap[id];
   }
+  
   updateSummary();
   if (nextId) showStep(nextId);
 }
 
 function updateSummary() {
-  document.getElementById("summaryText").innerText = 
-    `用途：${formData.purpose_label} | 包装：${formData.packaging_label} | 场景：${formData.scene_label} | 氛围：${formData.mood_label}`;
+  // 正确体现模型风格的数据
+  const summary = `风格：${formData.model_label} | 用途：${formData.purpose_label} | 包装：${formData.packaging_label} | 场景：${formData.scene_label} | 氛围：${formData.mood_label}`;
+  document.getElementById("summaryText").innerText = summary;
 }
 
 async function generate() {
-  if (!formData.scene || !formData.mood) { alert("请完成所有选择"); return; }
+  if (!formData.scene || !formData.mood) { alert("请完成前方的定制引导步骤"); return; }
+  
   const genBtn = document.getElementById("genBtn");
   const resultsDiv = document.getElementById("results");
+  const customTxt = document.getElementById("customInput").value;
+
   genBtn.disabled = true;
   document.getElementById("loading").style.display = "block";
   resultsDiv.innerHTML = "";
@@ -150,34 +183,55 @@ async function generate() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        scene: formData.scene,
-        mood: formData.mood,
-        packaging: formData.packaging,
-        style: formData.style,
-        purpose: formData.purpose,
-        batch: 3
-      })
+          model_type: formData.model_type,
+          scene: formData.scene,
+          mood: formData.mood,
+          packaging: formData.packaging,
+          style: formData.style,
+          purpose: formData.purpose,
+          custom: customTxt, // 发送留言数据
+          batch: 3
+        })
     });
+    
     const data = await res.json();
-    if (!data.images || data.images.length === 0) { alert("生成失败"); return; }
+    if (!data.images || data.images.length === 0) { alert("生成超时或后端未响应"); return; }
 
     data.images.forEach((url, index) => {
       const card = document.createElement("div");
       card.className = "image-card";
+      
       const img = document.createElement("img");
       const proxyUrl = `http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}&t=${Date.now()}`;
       img.src = proxyUrl;
-      img.onclick = () => { document.getElementById("modalImg").src = proxyUrl; document.getElementById("modal").style.display = "flex"; };
+      img.title = "点击查看高清图";
+      img.onclick = () => { 
+        document.getElementById("modalImg").src = proxyUrl; 
+        document.getElementById("modal").style.display = "flex"; 
+      };
+      
       const btn = document.createElement("button");
-      btn.innerText = (index === 1 && formData.packaging !== 'none') ? "确认包装方案" : "确认此场景";
+      btn.className = "btn-main";
+      btn.style.marginTop = "10px";
+      btn.innerText = (index === 1 && formData.packaging !== 'none') ? "选定包装方案" : "选定此场景";
+      
       card.appendChild(img);
       card.appendChild(btn);
       resultsDiv.appendChild(card);
     });
-  } catch (e) { alert("服务未开启"); } finally { genBtn.disabled = false; document.getElementById("loading").style.display = "none"; }
+  } catch (e) { 
+    alert("连接失败，请检查后端 Python 服务是否运行"); 
+  } finally { 
+    genBtn.disabled = false; 
+    document.getElementById("loading").style.display = "none"; 
+  }
 }
+
 function closeModal() { document.getElementById("modal").style.display = "none"; }
-function resetAll() { location.reload(); }
+function resetAll() { if(confirm("确定要重置所有选项吗？")) location.reload(); }
+
+// 初始化进度条
+updateProgress();
 </script>
 </body>
 </html>
