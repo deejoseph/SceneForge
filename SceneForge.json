@@ -1,0 +1,145 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "dreamshaper_8.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Checkpoint加载器（简易）"
+    }
+  },
+  "2": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
+      "strength_model": 0.6,
+      "strength_clip": 0.6,
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "加载LoRA"
+    }
+  },
+  "3": {
+    "inputs": {
+      "lora_name": "CeramicXL_LoRA.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": [
+        "2",
+        0
+      ],
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "加载LoRA"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "a celadon ceramic tea cup centered on a wooden tea table, elegant minimalist zen tea room background, soft natural lighting, subtle shadows, jade-like glaze, handcrafted texture, clean composition, high-end product photography, focus on material and form, no distraction",
+      "clip": [
+        "3",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": "blurry, low quality, distorted, bad anatomy, cluttered background, messy composition, too many objects, plastic texture, artificial colors, watermark, text",
+      "clip": [
+        "3",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "6": {
+    "inputs": {
+      "width": 832,
+      "height": 1472,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent图像"
+    }
+  },
+  "7": {
+    "inputs": {
+      "seed": 1650338057631,
+      "steps": 20,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+        "3",
+        0
+      ],
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "5",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "ceramic_ai",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  }
+}
