@@ -59,50 +59,74 @@ def get_item_desc(items):
     parts = [f"{v} {TRANSLATION_MAP.get(k, k)}" for k, v in items.items() if v > 0]
     return ", ".join(parts) if parts else "exquisite celadon porcelain"
 
+# ===== 1. 材质与品牌常量定义 =====
+
+# 锁定粉青物理属性：白胎、青中泛蓝、无开片、极致均匀
+FENQING_BASE = (
+    "exquisite Powder Celadon (Fenqing), white porcelain substrate, thick opaque glaze, "
+    "color is pale blue-green with a strong (bluish undertone:1.3), "
+    "pure monochromatic glaze, immaculate surfaces, no crackles, no underglaze bleeding, "
+    "avoiding yellow or grass green tints, refined and clean aesthetic"
+)
+
+# 品牌指纹：图 5 Logo 的颜色与结构描述
+BRANDING_STAMP = (
+    "subtle brand logo on the porcelain surface, (dark taupe outer shell with a terracotta core:1.1), "
+    "crisp minimalist graphic, professional luxury branding"
+)
+
+# ===== 2. 函数实现 =====
+
 def get_pkg_name(p_id):
-    pkg_dict = {"1": "minimalist eco paper box", "2": "luxury silk-lined gift box", "3": "traditional wooden crate"}
+    pkg_dict = {
+        "1": "minimalist eco paper box", 
+        "2": "luxury silk-lined gift box", 
+        "3": "traditional wooden crate"
+    }
     return pkg_dict.get(p_id, "gift packaging")
 
 def build_delivery_prompts(req: GenerateRequest) -> List[str]:
     item_desc = get_item_desc(req.items)
-    # 核心：确保青瓷材质在所有视角中高度统一
-    base_material = "Longquan celadon porcelain, masterpiece, highly detailed jade-like glaze texture"
+    
+    # 核心材质 + 品牌指纹 的组合
+    base_material = f"{FENQING_BASE}, {BRANDING_STAMP}, masterpiece"
     tech_suffix = "photorealistic, 8k resolution, cinematic lighting, elegant aesthetic"
     user_custom = f", {req.custom}" if req.custom.strip() else ""
     
     prompts = []
 
-    # 视角 1: 产品展示 (Macro/Studio)
+    # 视角 1: 产品展示 (侧重微距与材质纯净度)
     prompts.append(
-        f"{base_material}, {item_desc}, macro photography, blurred simple background, "
+        f"{base_material}, {item_desc}, macro photography, blurred minimalist background, "
         f"centered composition, studio lighting, {tech_suffix}{user_custom}"
     )
 
     if req.purpose == "gift":
-        # 视角 2: 礼盒效果
+        # 视角 2: 礼盒效果 (侧重包装与产品的嵌套关系)
         pkg = get_pkg_name(req.packaging)
         prompts.append(
             f"{base_material}, {item_desc} neatly placed inside an open {pkg}, "
-            f"presentation view, silk lining details, premium gift set, {tech_suffix}, {req.style}{user_custom}"
+            f"presentation view, silk lining details, premium gift set, "
+            f"{req.style}, {tech_suffix}{user_custom}"
         )
-        # 视角 3: 商务送礼场景
+        # 视角 3: 商务送礼场景 (侧重人机互动与礼仪感)
         prompts.append(
             f"{base_material} in a {pkg}, hands holding the box, {req.scene_prompt}, "
             f"ceremonial gifting moment, business etiquette, professional atmosphere, "
             f"{req.style}, {tech_suffix}{user_custom}"
         )
     else:
-        # 视角 2: 居家环境
+        # 视角 2: 居家环境 (侧重生活美学与自然光)
         prompts.append(
             f"{base_material}, {item_desc}, {req.scene_prompt}, "
-            f"daily life scene, soft natural window light, home interior, "
+            f"daily life scene, soft natural window light, home interior design, "
             f"{req.style}, {tech_suffix}{user_custom}"
         )
-        # 视角 3: 社交共享
+        # 视角 3: 社交共享 (侧重氛围感与局部景深)
         prompts.append(
             f"{base_material}, {item_desc}, {req.scene_prompt}, people enjoying tea or meal, "
-            f"warm social interaction, shared happiness, depth of field, {req.style}, "
-            f"{tech_suffix}{user_custom}"
+            f"warm social interaction, shared happiness, shallow depth of field, "
+            f"{req.style}, {tech_suffix}{user_custom}"
         )
     
     return prompts
