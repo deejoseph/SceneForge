@@ -18,6 +18,22 @@
   button:disabled { border-color: #ccc; color: #ccc; cursor: not-allowed; }
   .btn-main { background: var(--primary-color); color: white; font-weight: bold; border: none; }
   .options-grid { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  
+  /* 包装卡片样式 */
+  .pkg-card { 
+    border: 2px solid #eee; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    width: 220px; 
+    text-align: center; 
+    transition: 0.3s; 
+    background: #fff; 
+    overflow: hidden;
+  }
+  .pkg-card:hover { border-color: var(--primary-color); transform: translateY(-5px); }
+  .pkg-card.selected { border-color: var(--primary-color); background: #f0f4f2; box-shadow: 0 4px 12px rgba(74,106,94,0.2); }
+  .pkg-card img { width: 100%; height: 150px; object-fit: cover; }
+
   #generator { margin-top: 60px; border-top: 1px solid #ddd; padding-top: 40px; }
   #finalPromptBox { background: #f0f4f2; padding: 20px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; }
   .quantity-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 10px; background: #fff; border-radius: 6px; border: 1px solid #eee; }
@@ -76,12 +92,22 @@
 </div>
 
 <div class="step" id="step2_gift">
-  <h3>2. 请选择包装风格</h3>
-  <div class="options-grid">
-    <button onclick="setChoice('packaging', '1', '简易纸盒', 'step4')">简易纸盒</button>
-    <button onclick="setChoice('packaging', '2', '精装礼盒', 'step4')">精装礼盒</button>
-    <button onclick="setChoice('packaging', '3', '高端木盒', 'step4')">高端木盒</button>
+  <h3>2. 请选择赠礼包装风格</h3>
+  <div class="options-grid" style="gap: 20px;">
+    <div class="pkg-card" id="pkg_1" onclick="setPackaging('1', '简易纸盒')">
+      <img src="imgs/pkg_simple.jpg" alt="简易纸盒">
+      <div style="padding:10px;"><b>简易环保纸盒</b><br><small>简约自然 / 环保降解</small></div>
+    </div>
+    <div class="pkg-card" id="pkg_2" onclick="setPackaging('2', '精装礼盒')">
+      <img src="imgs/pkg_luxury.jpg" alt="精装礼盒">
+      <div style="padding:10px;"><b>精美丝缎礼盒</b><br><small>雅致礼遇 / 烫金工艺</small></div>
+    </div>
+    <div class="pkg-card" id="pkg_3" onclick="setPackaging('3', '高端木盒')">
+      <img src="imgs/pkg_wood.jpg" alt="高端木盒">
+      <div style="padding:10px;"><b>高档珍藏木盒</b><br><small>榫卯结构 / 传世收藏</small></div>
+    </div>
   </div>
+  <button class="btn-main" style="margin-top:20px;" onclick="pushStep('step4')">确认包装并继续 ➔</button>
 </div>
 
 <div class="step" id="step4">
@@ -98,12 +124,16 @@
 <div id="generator">
   <h2>氛围预览生成</h2>
   <div id="finalPromptBox">
-    <strong>配置详情：</strong>
+    <strong>当前定制方案：</strong>
     <div id="summaryDetail" style="margin-top:10px; font-size:14px; color:#555;">完成上方步骤即可生成...</div>
+    <div style="margin-top:10px; font-size:12px; color:var(--primary-color); border-top:1px solid #e0e0e0; padding-top:10px;">
+      💡 <b>AI 交付说明：</b>系统将自动为您生成三张图：<br>
+      <span id="deliveryHint">产品视角、使用环境、社交互动视角</span>
+    </div>
   </div>
   <input type="text" id="customInput" style="width:100%; padding:12px; margin:10px 0; box-sizing:border-box;" placeholder="补充需求：如背景加一支梅花...">
-  <button class="btn-main" id="genBtn" onclick="generate()" style="padding: 15px 40px; font-size: 18px;">开始 AI 渲染生成</button>
-  <div id="loading" style="display:none; color:var(--primary-color); margin:20px 0; font-weight:bold;">AI 正在渲染中...</div>
+  <button class="btn-main" id="genBtn" onclick="generate()" style="padding: 15px 40px; font-size: 18px;">开始 AI 渲染生成 (共3张)</button>
+  <div id="loading" style="display:none; color:var(--primary-color); margin:20px 0; font-weight:bold;">AI 正在渲染三个维度的构图，请稍候...</div>
   <div id="results"></div>
 </div>
 
@@ -164,7 +194,6 @@ const sceneMapping = {
     }
 };
 
-// 重点：优化后的氛围映射
 const moodMapping = {
     "dinnerware": [
         { id: "m1", label: "家庭聚餐 (温暖)", s: "warm family gathering atmosphere, soft yellow lighting, reunion feel" },
@@ -192,7 +221,6 @@ const moodMapping = {
 function pushStep(nextId) {
     if (!nextId) return;
 
-    // 动态生成场景选项
     if (nextId === 'step4') {
         const grid = document.getElementById("sceneOptions");
         grid.innerHTML = "";
@@ -208,7 +236,6 @@ function pushStep(nextId) {
         });
     }
 
-    // 动态生成氛围选项
     if (nextId === 'step5') {
         const grid = document.getElementById("moodOptions");
         grid.innerHTML = "";
@@ -238,6 +265,13 @@ function popStep() {
 function updateUI() {
     document.getElementById("prevBtn").disabled = historyStack.length <= 1;
     document.getElementById("bar").style.width = (historyStack.length / 6) * 100 + "%";
+    
+    const hint = document.getElementById("deliveryHint");
+    if (formData.purpose === 'gift') {
+      hint.innerText = "1. 产品展示视角 | 2. 礼盒嵌套展示 | 3. 商务送礼氛围图";
+    } else {
+      hint.innerText = "1. 产品展示视角 | 2. 居家使用环境 | 3. 亲友共享/社交氛围图";
+    }
     updateSummary();
 }
 
@@ -247,6 +281,14 @@ function setChoice(key, id, label, nextId) {
     if (key === 'model_type') formData.model_label = label;
     updateSummary();
     if (nextId) pushStep(nextId);
+}
+
+function setPackaging(id, label) {
+    formData.packaging = id;
+    formData.packaging_label = label;
+    document.querySelectorAll(".pkg-card").forEach(c => c.classList.remove("selected"));
+    document.getElementById("pkg_" + id).classList.add("selected");
+    updateSummary();
 }
 
 function selectCategory(id, label) {
@@ -299,7 +341,8 @@ function updateSummary() {
     summary.innerHTML = `
         <span class="badge">模式</span> <b>${formData.model_label}</b> | 
         <span class="badge">用途</span> <b>${formData.purpose_label || '未选'}</b><br>
-        <span class="badge">清单</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "未选择"} <br>
+        <span class="badge">清单</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "未选择"} | 
+        <span class="badge">包装</span> ${formData.packaging_label}<br>
         <span class="badge">场景</span> ${formData.scene_label} | <span class="badge">氛围</span> ${formData.mood_label}
     `;
 }
@@ -318,10 +361,17 @@ async function generate() {
         const data = await res.json();
         const resDiv = document.getElementById("results");
         resDiv.innerHTML = "";
-        data.images.forEach(url => {
+        data.images.forEach((url, index) => {
             const card = document.createElement("div");
             card.className = "image-card";
-            card.innerHTML = `<img src="http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}"><button class="btn-main" style="width:100%; margin-top:10px;">确认设计方案</button>`;
+            const titles = formData.purpose === 'gift' ? 
+              ['产品展示视角', '礼盒效果展示', '送礼氛围场景'] : 
+              ['产品展示视角', '生活环境氛围', '社交共享氛围'];
+            card.innerHTML = `
+              <div style="font-weight:bold; margin-bottom:5px; color:var(--primary-color);">视角 ${index+1}: ${titles[index]}</div>
+              <img src="http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}">
+              <button class="btn-main" style="width:100%; margin-top:10px;">选定此构图</button>
+            `;
             resDiv.appendChild(card);
         });
     } catch(e) { alert("生成失败，请检查后端服务"); }

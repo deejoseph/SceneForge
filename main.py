@@ -3,13 +3,13 @@ from pydantic import BaseModel
 import requests
 import time
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
-# ===== 跨域配置 =====
+# ===== 1. 跨域配置 (CORS) =====
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ===== 配置与模型映射 =====
+# ===== 2. 模型与配置常量 =====
 sessions = {}
 
 MODEL_MAP = {
@@ -27,96 +27,104 @@ MODEL_MAP = {
     "artistic": "dreamshaperXL_lightningDPMSDE.safetensors"
 }
 
-# 扩展翻译映射，涵盖所有新增器皿
+# 完整的翻译映射
 TRANSLATION_MAP = {
-    # 餐具
-    "dinner_plate": "large dinner plate",
-    "medium_plate": "medium plate",
-    "bowl": "bowl",
-    "sauce_dish": "sauce dish",
-    "large_pot": "large serving pot",
-    # 茶具
-    "teapot": "teapot",
-    "gaiwan": "Gaiwan (tea lidded bowl)",
-    "fair_cup": "fairness cup (Gongdao Bei)",
-    "tea_cup": "tea cup",
-    "tea_sea": "tea sea (Cha Hai)",
-    "tea_tray": "tea tray",
-    "tea_wash": "tea wash bowl",
-    "incense_burner": "incense burner",
-    # 咖啡具
-    "coffee_pot": "coffee pot",
-    "coffee_cup": "coffee cup and saucer",
-    "mug": "ceramic mug",
-    # 摆设
-    "vase": "celadon vase",
-    "lamp": "celadon table lamp",
-    "plaque": "engraved porcelain plaque",
-    "sculpture": "celadon sculpture"
+    "dinner_plate": "large dinner plate", "medium_plate": "medium plate", "bowl": "bowl",
+    "sauce_dish": "sauce dish", "large_pot": "large serving pot", "teapot": "teapot",
+    "gaiwan": "Gaiwan (tea lidded bowl)", "fair_cup": "fairness cup", "tea_cup": "tea cup",
+    "tea_sea": "tea sea", "tea_tray": "tea tray", "tea_wash": "tea wash bowl",
+    "incense_burner": "incense burner", "coffee_pot": "coffee pot", "coffee_cup": "coffee cup and saucer",
+    "mug": "ceramic mug", "vase": "celadon vase", "lamp": "celadon table lamp",
+    "plaque": "engraved porcelain plaque", "sculpture": "celadon sculpture"
 }
 
+# ===== 3. 数据模型 =====
 class GenerateRequest(BaseModel):
     model_type: str = "realistic"
     purpose: str                  # "personal" 或 "gift"
-    category: str = "tea"         # "dinnerware", "coffee", "tea", "decor"
-    items: Dict[str, int] = {}    
-    scene: str                    # 场景 ID
-    scene_prompt: str             # 前端传来的详细英文场景描述
-    mood: str
-    mood_label: str
+    category: str
+    items: Dict[str, int]
+    scene_prompt: str             # 来自前端场景选择
+    mood: str                     # 氛围 ID
+    mood_label: str               # 氛围中文名
+    style: str                    # 来自前端氛围映射的详细描述
     packaging: str = "none"
-    style: str = ""               # 氛围触发词
-    custom: str = ""              
-    batch: int = 3
+    custom: str = ""
 
 COMFY_URL = "http://127.0.0.1:8188/prompt"
 
-# ===== 核心功能函数 =====
+# ===== 4. 核心提示词工厂 (三视角逻辑) =====
+
+def get_item_desc(items):
+    parts = [f"{v} {TRANSLATION_MAP.get(k, k)}" for k, v in items.items() if v > 0]
+    return ", ".join(parts) if parts else "exquisite celadon porcelain"
+
+def get_pkg_name(p_id):
+    pkg_dict = {"1": "minimalist eco paper box", "2": "luxury silk-lined gift box", "3": "traditional wooden crate"}
+    return pkg_dict.get(p_id, "gift packaging")
+
+def build_delivery_prompts(req: GenerateRequest) -> List[str]:
+    item_desc = get_item_desc(req.items)
+    # 核心：确保青瓷材质在所有视角中高度统一
+    base_material = "Longquan celadon porcelain, masterpiece, highly detailed jade-like glaze texture"
+    tech_suffix = "photorealistic, 8k resolution, cinematic lighting, elegant aesthetic"
+    user_custom = f", {req.custom}" if req.custom.strip() else ""
+    
+    prompts = []
+
+    # 视角 1: 产品展示 (Macro/Studio)
+    prompts.append(
+        f"{base_material}, {item_desc}, macro photography, blurred simple background, "
+        f"centered composition, studio lighting, {tech_suffix}{user_custom}"
+    )
+
+    if req.purpose == "gift":
+        # 视角 2: 礼盒效果
+        pkg = get_pkg_name(req.packaging)
+        prompts.append(
+            f"{base_material}, {item_desc} neatly placed inside an open {pkg}, "
+            f"presentation view, silk lining details, premium gift set, {tech_suffix}, {req.style}{user_custom}"
+        )
+        # 视角 3: 商务送礼场景
+        prompts.append(
+            f"{base_material} in a {pkg}, hands holding the box, {req.scene_prompt}, "
+            f"ceremonial gifting moment, business etiquette, professional atmosphere, "
+            f"{req.style}, {tech_suffix}{user_custom}"
+        )
+    else:
+        # 视角 2: 居家环境
+        prompts.append(
+            f"{base_material}, {item_desc}, {req.scene_prompt}, "
+            f"daily life scene, soft natural window light, home interior, "
+            f"{req.style}, {tech_suffix}{user_custom}"
+        )
+        # 视角 3: 社交共享
+        prompts.append(
+            f"{base_material}, {item_desc}, {req.scene_prompt}, people enjoying tea or meal, "
+            f"warm social interaction, shared happiness, depth of field, {req.style}, "
+            f"{tech_suffix}{user_custom}"
+        )
+    
+    return prompts
+
+# ===== 5. ComfyUI 交互逻辑 =====
 
 def call_comfy(prompt_text, seed, ckpt_name, model_type):
     is_xl = "XL" in ckpt_name or "xl" in ckpt_name
-    
-    # 动态参数调整
-    if is_xl:
-        steps, cfg = 8, 2.0           
-        width, height = 1344, 768
-        sampler = "dpmpp_sde"
-        lora_weight = 0.8 if model_type == "artistic" else 0.6
-    else:
-        steps, cfg = 20, 5.0           
-        width, height = 768, 512  
-        sampler = "dpmpp_2m"
-        lora_weight = 0     
-
-    negative_content = (
-        "bad hands, (two spouts:1.5), deformed handle, multiple teapots, "
-        "lowres, bad quality, blurry, cluttered, text, watermark"
-    )
+    steps, cfg = (8, 2.0) if is_xl else (20, 5.0)
+    width, height = (1344, 768) if is_xl else (768, 512)
+    sampler = "dpmpp_sde" if is_xl else "dpmpp_2m"
+    lora_weight = 0.8 if model_type == "artistic" else 0.6
     
     workflow = {
         "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": ckpt_name } },
-        "2": { 
-            "class_type": "LoraLoader", 
-            "inputs": { 
-                "lora_name": "CeramicXL_LoRA.safetensors", 
-                "strength_model": lora_weight, 
-                "strength_clip": 1.0, 
-                "model": ["1", 0], "clip": ["1", 1] 
-            } 
-        },
+        "2": { "class_type": "LoraLoader", "inputs": { "lora_name": "CeramicXL_LoRA.safetensors", "strength_model": lora_weight, "strength_clip": 1.0, "model": ["1", 0], "clip": ["1", 1] } },
         "3": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt_text, "clip": ["2", 1] } },
-        "4": { "class_type": "CLIPTextEncode", "inputs": { "text": negative_content, "clip": ["2", 1] } },
+        "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "low quality, bad anatomy, text, watermark, (two spouts:1.5), deformed", "clip": ["2", 1] } },
         "5": { "class_type": "EmptyLatentImage", "inputs": { "width": width, "height": height, "batch_size": 1 } },
-        "6": {
-            "class_type": "KSampler",
-            "inputs": {
-                "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler,
-                "scheduler": "karras", "denoise": 1.0,
-                "model": ["2", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["5", 0]
-            }
-        },
+        "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": "karras", "denoise": 1.0, "model": ["2", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["5", 0] } },
         "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["1", 2] } },
-        "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "CeramicCustom", "images": ["7", 0] } }
+        "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "Ceramic_Custom", "images": ["7", 0] } }
     }
     
     try:
@@ -125,97 +133,62 @@ def call_comfy(prompt_text, seed, ckpt_name, model_type):
     except Exception as e:
         return {"error": str(e)}
 
-def build_vibe_prompt(req: GenerateRequest, is_packaging_focus=False):
-    # 1. 生成器皿清单描述
-    item_parts = []
-    for key, count in req.items.items():
-        if count > 0:
-            name = TRANSLATION_MAP.get(key, key.replace("_", " "))
-            # 如果是摆设类且单选，不加数字以提高权重
-            if req.category == "decor":
-                item_parts.append(f"a masterpiece of {name}")
-            else:
-                item_parts.append(f"{count} {name}")
-    
-    subject_desc = ", ".join(item_parts) if item_parts else "exquisite celadon porcelain"
-    
-    # 2. 包装逻辑
-    if req.purpose == "gift" and req.packaging != "none":
-        pkg_map = {"1": "cardboard box", "2": "luxury gift box", "3": "wooden crate"}
-        pkg_name = pkg_map.get(req.packaging, "gift packaging")
-        if is_packaging_focus:
-            subject = f"an open {pkg_name}, {subject_desc} placed neatly inside"
-        else:
-            subject = f"{subject_desc}, standing next to its {pkg_name}"
-    else:
-        subject = subject_desc
+def get_images(prompt_id):
+    url = f"http://127.0.0.1:8188/history/{prompt_id}"
+    for _ in range(60): # 轮询约 72 秒
+        try:
+            res = requests.get(url)
+            if res.status_code == 200:
+                data = res.json()
+                if prompt_id in data:
+                    outputs = data[prompt_id].get("outputs", {})
+                    for node_id, node_output in outputs.items():
+                        if "images" in node_output:
+                            img = node_output["images"][0]
+                            return [f"http://127.0.0.1:8188/view?filename={img['filename']}&subfolder={img['subfolder']}&type={img['type']}"]
+        except:
+            pass
+        time.sleep(1.2)
+    return []
 
-    # 3. 组合最终 Prompt (核心：使用 req.scene_prompt)
-    user_custom = f", {req.custom}" if req.custom.strip() else ""
-    
-    full_prompt = (
-        f"Longquan celadon porcelain, {subject}, {req.scene_prompt}, "
-        f"{req.mood_label} atmosphere, {req.style}, "
-        f"soft natural lighting, photorealistic, 8k, highly detailed glaze texture{user_custom}"
-    )
-    return full_prompt
-
-# ===== 路由定义 =====
+# ===== 6. 路由接口 =====
 
 @app.post("/generate")
 def generate(req: GenerateRequest):
     ckpt_name = MODEL_MAP.get(req.model_type, MODEL_MAP["realistic"])
+    prompts = build_delivery_prompts(req)
     image_urls = []
     prompt_ids = []
 
-    print(f"--- 任务启动: {req.category} | 场景: {req.scene_prompt} ---")
+    print(f"--- 启动交付级渲染 | 类别: {req.category} | 用途: {req.purpose} ---")
 
-    for i in range(req.batch):
-        # 批次 2 针对礼品模式生成包装特写
-        focus_on_pkg = (i == 1 and req.purpose == "gift")
-        view_hint = "macro shot" if i == 2 else "professional photography"
-        
-        prompt = build_vibe_prompt(req, focus_on_pkg) + f", {view_hint}"
+    for p_text in prompts:
         seed = int(uuid.uuid4().int % 1e9)
-        
-        comfy_res = call_comfy(prompt, seed, ckpt_name, req.model_type)
-        if "prompt_id" in comfy_res:
-            prompt_ids.append(comfy_res["prompt_id"])
+        res = call_comfy(p_text, seed, ckpt_name, req.model_type)
+        if "prompt_id" in res:
+            prompt_ids.append(res["prompt_id"])
 
-    # 轮询获取结果
     for pid in prompt_ids:
         urls = get_images(pid)
-        if urls:
-            image_urls.append(urls[0])
+        if urls: image_urls.append(urls[0])
 
     return {"status": "ok", "images": image_urls}
 
-def get_images(prompt_id):
-    url = f"http://127.0.0.1:8188/history/{prompt_id}"
-    for _ in range(50): # 增加等待时间至 60 秒左右
-        res = requests.get(url)
-        if res.status_code == 200:
-            data = res.json()
-            if prompt_id in data:
-                outputs = data[prompt_id].get("outputs", {})
-                for node_id, node_output in outputs.items():
-                    if "images" in node_output:
-                        img = node_output["images"][0]
-                        return [f"http://127.0.0.1:8188/view?filename={img['filename']}&subfolder={img['subfolder']}&type={img['type']}"]
-        time.sleep(1.2)
-    return []
-
 @app.get("/download")
 def download(url: str):
-    r = requests.get(url)
-    return StreamingResponse(iter([r.content]), media_type="image/png")
+    try:
+        r = requests.get(url, stream=True)
+        return StreamingResponse(r.iter_content(chunk_size=1024), media_type="image/png")
+    except:
+        return {"error": "Download failed"}
 
 @app.post("/confirm")
 def confirm(session_id: str = Body(...), image_url: str = Body(...)):
-    if session_id in sessions:
-        sessions[session_id].update({"confirmed": True, "selected_image": image_url})
+    sessions[session_id] = {"confirmed": True, "selected_image": image_url, "timestamp": time.time()}
     return {"status": "ok"}
 
+# ===== 7. 启动主程序 =====
 if __name__ == "__main__":
     import uvicorn
+    # 使用 0.0.0.0 方便局域网测试
     uvicorn.run(app, host="0.0.0.0", port=8000)
