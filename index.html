@@ -43,6 +43,35 @@
   .image-card img { width: 100%; border-radius: 4px; }
   .badge { background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 5px; }
   .row-selected { border-color: var(--primary-color) !important; background: #f0f4f2 !important; }
+/* 图片放大遮罩层 */
+#overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000;
+  cursor: zoom-out;
+  justify-content: center;
+  align-items: center;
+}
+#overlay img {
+  max-width: 90%;
+  max-height: 90%;
+  border: 3px solid white;
+  border-radius: 4px;
+}
+#formalOrderBtn {
+    background-color: #c49a6c; /* 建议换个颜色，如类似金/铜色，区分于普通的绿色 */
+    border: none;
+    box-shadow: 0 4px 15px rgba(196,154,108,0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
 </style>
 </head>
 <body>
@@ -50,18 +79,37 @@
 <h2>青瓷定制引导：场景确认</h2>
 <div id="progress"><div id="bar"></div></div>
 
-<div id="topControls">
-  <button id="prevBtn" onclick="popStep()" disabled>⬅ 上一步</button>
-  <button onclick="resetAll()">🔄 重新开始</button>
+<div id="topControls" style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;">
+  <div>
+    <button id="prevBtn" onclick="popStep()" disabled>⬅ 上一步</button>
+    <button onclick="resetAll()" style="margin-left: 10px;">🔄 重新开始</button>
+  </div>
+  
+  <div id="actionArea">
+    <button id="formalOrderBtn" class="btn-main" 
+            onclick="goToFormalOrder()" 
+            style="display:none; background: #c49a6c; border: none; padding: 12px 25px;">
+      ✨ 场景已确认，进入正式定制环节
+    </button>
+  </div>
 </div>
 
 <div class="step active" id="step0">
-  <h3>0. 选择渲染模式与风格</h3>
+  <h3>0.1 选择渲染引擎</h3>
   <div class="options-grid">
-    <button onclick="setChoice('model_type', 'realistic', '高清写实', 'step1')">高清写实 (旗舰引擎)</button>
-    <button onclick="setChoice('model_type', 'artistic', '意境艺术', 'step1')">意境艺术 (旗舰引擎)</button>
-    <button onclick="setChoice('model_type', 'fast', '快速预览', 'step1')">快速预览 (轻量引擎)</button>
+    <button id="engine_realistic" onclick="setChoice('model_type', 'realistic', '高清写实', null)">高清写实 (旗舰引擎)</button>
+    <button id="engine_artistic" onclick="setChoice('model_type', 'artistic', '意境艺术', null)">意境艺术 (旗舰引擎)</button>
+    <button id="engine_fast" onclick="setChoice('model_type', 'fast', '快速预览', null)">快速预览 (轻量引擎)</button>
   </div>
+    
+  <h3 style="margin-top:25px;">0.2 选择核心釉色</h3>
+  <div class="options-grid">
+    <button id="glaze_fenqing" onclick="setGlaze('fenqing', '粉青釉')">粉青釉 (温润如脂)</button>
+    <button id="glaze_meiziqing" onclick="setGlaze('meiziqing', '梅子青')">梅子青 (青翠欲滴)</button>
+    <button id="glaze_yingqing" onclick="setGlaze('yingqing', '影青釉')">影青釉 (瓷胎玉感)</button>
+  </div>
+  
+  <button class="btn-main" style="margin-top:30px; width:100%;" id="startBtn" onclick="pushStep('step1')" disabled>请先选择引擎与釉色</button>
 </div>
 
 <div class="step" id="step1">
@@ -132,7 +180,9 @@
     </div>
   </div>
   <input type="text" id="customInput" style="width:100%; padding:12px; margin:10px 0; box-sizing:border-box;" placeholder="补充需求：如背景加一支梅花...">
-  <button class="btn-main" id="genBtn" onclick="generate()" style="padding: 15px 40px; font-size: 18px;">开始 AI 渲染生成 (共3张)</button>
+  <button class="btn-main" id="genBtn" onclick="generate()" 
+        style="padding: 15px 40px; font-size: 18px; background: #ccc; cursor: not-allowed;" 
+        disabled>完成氛围选择后开启渲染</button>
   <div id="loading" style="display:none; color:var(--primary-color); margin:20px 0; font-weight:bold;">AI 正在渲染三个维度的构图，请稍候...</div>
   <div id="results"></div>
 </div>
@@ -140,6 +190,7 @@
 <script>
 let historyStack = ["step0"]; 
 let formData = {
+  glaze: "", glaze_label: "未选择",
   model_type: "realistic", model_label: "高清写实",
   purpose: "", purpose_label: "",
   category: "dinnerware", category_label: "",
@@ -150,6 +201,40 @@ let formData = {
   style: ""
 };
 
+function setGlaze(id, label) {
+    formData.glaze = id;
+    formData.glaze_label = label;
+    
+    // UI 高亮切换：增加背景色切换，视觉反馈更强
+    document.querySelectorAll("[id^='glaze_']").forEach(b => {
+        b.style.borderColor = "#eee";
+        b.style.background = "white"; 
+    });
+    const activeBtn = document.getElementById("glaze_" + id);
+    activeBtn.style.borderColor = "var(--primary-color)";
+    activeBtn.style.background = "#f0f4f2"; // 选中的浅绿色背景
+    
+    checkStep0Completion();
+    updateSummary();
+}
+
+function checkStep0Completion() {
+    const btn = document.getElementById("startBtn");
+    if (formData.model_type && formData.glaze) {
+        btn.disabled = false;
+        btn.innerText = "开启定制之旅 ➔";
+        btn.style.background = "var(--primary-color)"; // 变色提醒
+        btn.style.color = "white";
+        btn.style.cursor = "pointer";
+    } else {
+        // 增加反向锁定逻辑，确保万无一失
+        btn.disabled = true;
+        btn.innerText = "请先选择引擎与釉色";
+        btn.style.background = "#ccc";
+        btn.style.cursor = "not-allowed";
+    }
+}
+    
 const categoryDefaults = {
     "dinnerware": [
         {id:"dinner_plate", l:"大盘", d:6}, {id:"medium_plate", l:"中盘", d:6},
@@ -278,7 +363,16 @@ function updateUI() {
 function setChoice(key, id, label, nextId) {
     formData[key] = id;
     formData[key + "_label"] = label;
-    if (key === 'model_type') formData.model_label = label;
+    
+    // 如果是选择了氛围感（最后一步）
+    if (key === 'mood') {
+        const genBtn = document.getElementById("genBtn");
+        genBtn.disabled = false;
+        genBtn.style.background = "var(--primary-color)";
+        genBtn.style.cursor = "pointer";
+        genBtn.innerText = "开始 AI 渲染生成 (共3张)";
+    }
+    
     updateSummary();
     if (nextId) pushStep(nextId);
 }
@@ -339,7 +433,8 @@ function updateSummary() {
         return `${allItems.find(x => x.id === k)?.l} x${v}`;
     });
     summary.innerHTML = `
-        <span class="badge">模式</span> <b>${formData.model_label}</b> | 
+        <span class="badge">引擎</span> <b>${formData.model_label}</b> | 
+        <span class="badge">釉色</span> <b style="color:var(--primary-color)">${formData.glaze_label}</b><br>
         <span class="badge">用途</span> <b>${formData.purpose_label || '未选'}</b><br>
         <span class="badge">清单</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "未选择"} | 
         <span class="badge">包装</span> ${formData.packaging_label}<br>
@@ -361,24 +456,87 @@ async function generate() {
         const data = await res.json();
         const resDiv = document.getElementById("results");
         resDiv.innerHTML = "";
-        data.images.forEach((url, index) => {
-            const card = document.createElement("div");
-            card.className = "image-card";
-            const titles = formData.purpose === 'gift' ? 
-              ['产品展示视角', '礼盒效果展示', '送礼氛围场景'] : 
-              ['产品展示视角', '生活环境氛围', '社交共享氛围'];
-            card.innerHTML = `
-              <div style="font-weight:bold; margin-bottom:5px; color:var(--primary-color);">视角 ${index+1}: ${titles[index]}</div>
-              <img src="http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}">
-              <button class="btn-main" style="width:100%; margin-top:10px;">选定此构图</button>
-            `;
-            resDiv.appendChild(card);
-        });
+        // 修改 generate() 函数内的循环
+data.images.forEach((url, index) => {
+    const card = document.createElement("div");
+    card.className = "image-card";
+    const titles = formData.purpose === 'gift' ? 
+      ['产品展示视角', '礼盒效果展示', '送礼氛围场景'] : 
+      ['产品展示视角', '生活环境氛围', '社交共享氛围'];
+    
+    const fullUrl = `http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}`;
+    
+    card.innerHTML = `
+      <div style="font-weight:bold; margin-bottom:5px; color:var(--primary-color);">视角 ${index+1}: ${titles[index]}</div>
+      <img src="${fullUrl}" style="cursor: zoom-in;" onclick="showZoom('${fullUrl}')">
+      <button class="btn-main" style="width:100%; margin-top:10px;" onclick="downloadImage('${fullUrl}', 'Hearth_Studio_${titles[index]}.jpg')">
+        📥 下载此氛围图
+      </button>
+    `;
+    resDiv.appendChild(card);
+});
+
+// 生成完成后，显示顶部的正式定制按钮
+document.getElementById("formalOrderBtn").style.display = "inline-block";
     } catch(e) { alert("生成失败，请检查后端服务"); }
     finally { btn.disabled = false; document.getElementById("loading").style.display = "none"; }
 }
 
 function resetAll() { if(confirm("重置所有选择？")) location.reload(); }
+function showZoom(url) {
+    const overlay = document.getElementById("overlay");
+    const img = document.getElementById("overlayImg");
+    img.src = url;
+    overlay.style.display = "flex";
+}
+// 下载功能
+async function downloadImage(url, filename) {
+    try {
+        // 使用 fetch 获取图片数据
+        const response = await fetch(url);
+        const blob = await response.blob(); // 转换为二进制数据
+        
+        // 创建一个指向该 Blob 的临时 URL
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // 创建隐藏的下载链接
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename; // 此时 download 属性将生效
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        // 清理现场
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+    } catch (error) {
+        console.error("下载失败:", error);
+        // 如果 fetch 失败（可能是跨域限制），则回退到普通打开方式
+        window.open(url, '_blank');
+    }
+}
+
+// 进入正式定制环节
+function goToFormalOrder() {
+    const confirmMsg = `
+您当前的氛围选择：
+- 材质基调：${formData.category_label}
+- 空间场景：${formData.scene_label}
+- 艺术风格：${formData.mood_label}
+
+点击确定将进入正式定制流程（包括器皿器型选择、釉下刻花方案及 Logo 最终位置确认）。
+    `;
+    if(confirm(confirmMsg)) {
+        // 此处跳转到你的正式定制页面或后端 API
+        alert("正在为您开启 Hearth Studio 深度定制系统...");
+        window.location.href = "/formal-customization"; // 示例跳转
+    }
+}
 </script>
+<div id="overlay" onclick="this.style.display='none'">
+  <img id="overlayImg" src="">
+</div>
 </body>
 </html>
