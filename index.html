@@ -9,38 +9,33 @@
   h2, h3 { color: var(--primary-color); }
   #progress { width: 100%; height: 6px; background: #eee; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
   #bar { height: 100%; width: 0%; background: var(--primary-color); transition: 0.5s; }
-  .step { display: none; margin-top: 30px; animation: fadeIn 0.4s; }
+  .step { display: none; margin-top: 30px; animation: fadeIn 0.3s; }
   .active { display: block; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   #topControls { margin-bottom: 30px; display: flex; gap: 15px; }
-  button { padding: 10px 20px; border: 1px solid var(--primary-color); background: white; color: var(--primary-color); cursor: pointer; border-radius: 4px; transition: 0.2s; }
+  button { padding: 10px 20px; border: 1px solid var(--primary-color); background: white; color: var(--primary-color); cursor: pointer; border-radius: 4px; }
   button:hover { background: var(--primary-color); color: white; }
+  button:disabled { border-color: #ccc; color: #ccc; cursor: not-allowed; }
   .btn-main { background: var(--primary-color); color: white; font-weight: bold; border: none; }
-  .options-grid { display: flex; gap: 10px; margin-top: 10px; }
+  .options-grid { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
   #generator { margin-top: 60px; border-top: 1px solid #ddd; padding-top: 40px; }
-  #finalPromptBox { background: #f0f4f2; padding: 20px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; font-size: 15px; }
-  #results { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 20px; min-height: 200px; }
-  .image-card { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
-  .image-card img { width: 400px; height: auto; border-radius: 8px; display: block; margin-bottom: 10px; cursor: zoom-in; }
-  #loading { display: none; color: var(--primary-color); font-weight: bold; margin: 20px 0; }
-  #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000; }
-  #modal img { max-width: 90%; max-height: 90%; border: 2px solid #fff; }
-  
-  /* 留言框样式 */
-  .custom-area { margin: 20px 0; }
-  #customInput { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+  #finalPromptBox { background: #f0f4f2; padding: 20px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; }
+  .quantity-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 10px; background: #fff; border-radius: 6px; border: 1px solid #eee; }
+  .counter input { width: 40px; text-align: center; border: 1px solid #ddd; margin: 0 5px; }
+  #results { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+  .image-card { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 400px; }
+  .image-card img { width: 100%; border-radius: 4px; }
+  .badge { background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 5px; }
+  .row-selected { border-color: var(--primary-color) !important; background: #f0f4f2 !important; }
 </style>
 </head>
 <body>
 
 <h2>青瓷定制引导：场景确认</h2>
-<p style="color:#666;">通过简单的选择，我们将为您生成专属的展示氛围参考图。</p>
-
 <div id="progress"><div id="bar"></div></div>
 
 <div id="topControls">
-  <button id="prevBtn" onclick="prevStep()">⬅ 上一步</button>
-  <button id="nextBtn" onclick="nextAuto()">下一步 ➡</button>
+  <button id="prevBtn" onclick="popStep()" disabled>⬅ 上一步</button>
   <button onclick="resetAll()">🔄 重新开始</button>
 </div>
 
@@ -51,187 +46,289 @@
     <button onclick="setChoice('model_type', 'artistic', '意境艺术', 'step1')">意境艺术 (旗舰引擎)</button>
     <button onclick="setChoice('model_type', 'fast', '快速预览', 'step1')">快速预览 (轻量引擎)</button>
   </div>
-  <p style="font-size: 12px; color: #888; margin-top: 10px;">
-    * 注：<b>旗舰引擎</b> 采用 SDXL 架构，适合最终效果确认；<b>轻量引擎</b> 速度极快，适合初期构图调整。
-  </p>
 </div>
 
 <div class="step" id="step1">
   <h3>1. 您的定制用途是？</h3>
   <div class="options-grid">
-    <button onclick="setChoice('purpose', 'self', '个人收藏', 'step2_pack')">自己收藏/日常使用</button>
-    <button onclick="setChoice('purpose', 'gift', '商务礼赠', 'step2_pack')">商务馈赠/亲友礼品</button>
+    <button onclick="setChoice('purpose', 'personal', '个人自用', 'step_category')">个人自用</button>
+    <button onclick="setChoice('purpose', 'gift', '商务馈赠', 'step2_gift')">商务馈赠</button>
   </div>
 </div>
 
-<div class="step" id="step2_pack">
-  <h3>2. 您倾向的包装风格？</h3>
+<div class="step" id="step_category">
+  <h3>1.5 选择定制类别</h3>
   <div class="options-grid">
-    <button onclick="setChoice('packaging', 'none', '简约环保', 'step4')">简约包装</button>
-    <button onclick="setChoice('packaging', 'simple', '精装礼盒', 'step4')">精装礼盒</button>
-    <button onclick="setChoice('packaging', 'premium', '高端木盒', 'step4')">高端定制</button>
+    <button onclick="selectCategory('dinnerware', '精美餐具')">精美餐具</button>
+    <button onclick="selectCategory('tea', '专业茶具')">专业茶具</button>
+    <button onclick="selectCategory('coffee', '现代咖啡具')">现代咖啡具</button>
+    <button onclick="selectCategory('decor', '家居摆设')">家居摆设</button>
+  </div>
+</div>
+
+<div class="step" id="step_quantity">
+  <h3 id="qtyTitle">定制清单明细</h3>
+  <div id="constraintHint" style="display:none; background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; color: #856404;">
+    ⚠️ <b>系统提示：</b> 为了确保 AI 场景渲染的构图准确性，“家居摆设”类目每次仅支持单件定制。
+  </div>
+  <div id="quantityContainer" style="max-width: 450px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;"></div>
+  <button class="btn-main" onclick="pushStep('step4')">下一步：确认场景 ➔</button>
+</div>
+
+<div class="step" id="step2_gift">
+  <h3>2. 请选择包装风格</h3>
+  <div class="options-grid">
+    <button onclick="setChoice('packaging', '1', '简易纸盒', 'step4')">简易纸盒</button>
+    <button onclick="setChoice('packaging', '2', '精装礼盒', 'step4')">精装礼盒</button>
+    <button onclick="setChoice('packaging', '3', '高端木盒', 'step4')">高端木盒</button>
   </div>
 </div>
 
 <div class="step" id="step4">
-  <h3>3. 希望青瓷出现在什么场景？</h3>
-  <div class="options-grid">
-    <button onclick="setChoice('scene', 'tea room', '中式茶室', 'step5')">中式茶室</button>
-    <button onclick="setChoice('scene', 'home', '现代家居', 'step5')">现代家居</button>
-    <button onclick="setChoice('scene', 'office', '办公书房', 'step5')">办公书房</button>
-    <button onclick="setChoice('scene', 'gallery', '艺术展柜', 'step5')">艺术展柜</button>
-  </div>
+  <h3>3. 确认摆放位置</h3>
+  <div style="font-size: 13px; color: #666; margin-bottom: 15px;">* 针对您的选择，推荐以下陈设方案：</div>
+  <div class="options-grid" id="sceneOptions"></div>
 </div>
 
 <div class="step" id="step5">
   <h3>4. 您追求的整体氛围感？</h3>
-  <div class="options-grid">
-    <button onclick="setChoice('mood', 'zen', '禅意空灵', null)">禅意 (静谧)</button>
-    <button onclick="setChoice('mood', 'warm', '温暖柔和', null)">温暖 (柔和)</button>
-    <button onclick="setChoice('mood', 'luxury', '高雅沉稳', null)">高雅 (质感)</button>
-  </div>
+  <div class="options-grid" id="moodOptions"></div>
 </div>
 
 <div id="generator">
   <h2>氛围预览生成</h2>
-  
   <div id="finalPromptBox">
-    <strong>当前选择：</strong> <span id="summaryText">尚未完成选择</span>
+    <strong>配置详情：</strong>
+    <div id="summaryDetail" style="margin-top:10px; font-size:14px; color:#555;">完成上方步骤即可生成...</div>
   </div>
-
-  <div class="custom-area">
-    <label style="font-weight: bold; display: block; margin-bottom: 8px;">特别要求/客户留言：</label>
-    <input type="text" id="customInput" placeholder="在此输入额外需求，如：背景有一支梅花、窗外在下雨、桌面有水渍感等...">
-  </div>
-
+  <input type="text" id="customInput" style="width:100%; padding:12px; margin:10px 0; box-sizing:border-box;" placeholder="补充需求：如背景加一支梅花...">
   <button class="btn-main" id="genBtn" onclick="generate()" style="padding: 15px 40px; font-size: 18px;">开始 AI 渲染生成</button>
-  
-  <div id="loading">AI 正在根据您的选择进行多场景渲染，预计需要 30 秒，请稍候...</div>
+  <div id="loading" style="display:none; color:var(--primary-color); margin:20px 0; font-weight:bold;">AI 正在渲染中...</div>
   <div id="results"></div>
 </div>
 
-<div id="modal" onclick="closeModal()"><img id="modalImg"></div>
-
 <script>
-// 更新后的步骤数组，包含 step0
-let steps = ["step0", "step1", "step2_pack", "step4", "step5"];
-let currentStepIndex = 0;
-
+let historyStack = ["step0"]; 
 let formData = {
-  model_type: "realistic", 
-  model_label: "写实摄影",
-  purpose: "self", purpose_label: "个人收藏",
-  packaging: "none", packaging_label: "简约环保",
-  scene: "", scene_label: "未选",
-  mood: "", mood_label: "未选",
+  model_type: "realistic", model_label: "高清写实",
+  purpose: "", purpose_label: "",
+  category: "dinnerware", category_label: "",
+  items: {},
+  scene: "", scene_label: "未选择", scene_prompt: "",
+  mood: "", mood_label: "未选择",
+  packaging: "none", packaging_label: "系统默认",
   style: ""
 };
 
-function updateProgress() {
-  let percent = (currentStepIndex / (steps.length - 1)) * 100;
-  document.getElementById("bar").style.width = percent + "%";
-  document.getElementById("prevBtn").disabled = currentStepIndex === 0;
-  document.getElementById("nextBtn").disabled = currentStepIndex === steps.length - 1;
+const categoryDefaults = {
+    "dinnerware": [
+        {id:"dinner_plate", l:"大盘", d:6}, {id:"medium_plate", l:"中盘", d:6},
+        {id:"bowl", l:"碗", d:6}, {id:"sauce_dish", l:"味碟", d:6}, {id:"large_pot", l:"大盆", d:1}
+    ],
+    "tea": [
+        {id:"teapot", l:"茶壶", d:1}, {id:"gaiwan", l:"盖碗", d:1}, {id:"fair_cup", l:"公道杯", d:1},
+        {id:"tea_cup", l:"品茗杯", d:6}, {id:"tea_sea", l:"茶海", d:1}, {id:"tea_tray", l:"茶盘", d:1},
+        {id:"tea_wash", l:"茶洗", d:1}, {id:"incense_burner", l:"薰香炉", d:1}
+    ],
+    "coffee": [
+        {id:"coffee_pot", l:"咖啡壶", d:1}, {id:"coffee_cup", l:"咖啡杯碟", d:2}, {id:"mug", l:"马克杯(Mug)", d:2}
+    ],
+    "decor": [
+        {id:"vase", l:"精美花瓶", d:1}, 
+        {id:"lamp", l:"艺术台灯", d:0}, 
+        {id:"plaque", l:"刻花瓷版画", d:0}, 
+        {id:"sculpture", l:"青瓷雕塑", d:0}
+    ]
+};
+
+const sceneMapping = {
+    "dinnerware": [
+        { id: "grand_round", label: "中餐大圆桌", p: "on a large traditional Chinese round dining table, luxury setting" },
+        { id: "long_table", label: "西餐长桌", p: "on a minimalist modern long dining table" },
+        { id: "square_table", label: "温馨方桌", p: "on a cozy family square wooden table" }
+    ],
+    "tea": [
+        { id: "tatami", label: "禅茶室 (榻榻米)", p: "on a low Japanese tatami tea table, garden background" },
+        { id: "master_desk", label: "专业茶台", p: "on a professional stone or wood tea ceremony table" },
+        { id: "desk_corner", label: "单人书室", p: "on a scholar's wooden desk corner" }
+    ],
+    "coffee": [
+        { id: "cafe_corner", label: "现代咖啡角", p: "in a bright minimalist cafe corner" },
+        { id: "office_desk", label: "办公位", p: "on a clean professional office desk" }
+    ],
+    "decor": {
+        "vase": [{ id: "vase_scene", label: "条案/几页 (屏风前)", p: "on a traditional Chinese console table, silk screen background" }],
+        "lamp": [{ id: "lamp_scene", label: "卧室床头", p: "on a minimalist bedside table, soft interior lighting" }],
+        "plaque": [{ id: "plaque_scene", label: "博古架/挂墙", p: "displayed on a luxury wooden gallery shelf" }],
+        "sculpture": [{ id: "sculpture_scene", label: "玄关展示", p: "placed in a high-end foyer entrance cabinet" }]
+    }
+};
+
+// 重点：优化后的氛围映射
+const moodMapping = {
+    "dinnerware": [
+        { id: "m1", label: "家庭聚餐 (温暖)", s: "warm family gathering atmosphere, soft yellow lighting, reunion feel" },
+        { id: "m2", label: "宴请宾客 (高雅)", s: "elegant banquet lighting, high-end hotel restaurant vibe, luxury" },
+        { id: "m3", label: "家居日常 (轻松)", s: "casual daily life atmosphere, bright natural daylight, simple lifestyle" }
+    ],
+    "tea": [
+        { id: "m4", label: "禅意静思 (静谧)", s: "zen silence, wabi-sabi style, shadows of bamboo, morning mist" },
+        { id: "m5", label: "茶艺表演 (高雅)", s: "formal tea ceremony style, theatrical lighting, sophisticated" },
+        { id: "m6", label: "亲友茶会 (温暖)", s: "friendly gathering, relaxed tea time, warm and cozy social vibe" }
+    ],
+    "coffee": [
+        { id: "m7", label: "家庭温馨", s: "homey morning coffee vibe, soft focus background, comfortable" },
+        { id: "m8", label: "办公高级", s: "modern executive office style, sharp professional lighting" },
+        { id: "m9", label: "单人随意", s: "solitary relaxing moment, cinematic moody light, personal time" }
+    ],
+    "decor": [
+        { id: "m10", label: "中式装饰", s: "traditional Chinese aesthetic, ink wash style, classic heritage" },
+        { id: "m11", label: "西式装饰", s: "modern western interior design, minimalist, clean lines" },
+        { id: "m12", label: "日韩装饰", s: "Muji style, natural wood, zen minimalist, soft tones" },
+        { id: "m13", label: "美式装饰", s: "American classic interior, retro luxury, heavy wood textures" }
+    ]
+};
+
+function pushStep(nextId) {
+    if (!nextId) return;
+
+    // 动态生成场景选项
+    if (nextId === 'step4') {
+        const grid = document.getElementById("sceneOptions");
+        grid.innerHTML = "";
+        let scenes = (formData.category === 'decor') ? 
+            (sceneMapping.decor[Object.keys(formData.items).find(k => formData.items[k] > 0)] || []) : 
+            (sceneMapping[formData.category] || []);
+        
+        scenes.forEach(s => {
+            const btn = document.createElement("button");
+            btn.innerText = s.label;
+            btn.onclick = () => { formData.scene_prompt = s.p; setChoice('scene', s.id, s.label, 'step5'); };
+            grid.appendChild(btn);
+        });
+    }
+
+    // 动态生成氛围选项
+    if (nextId === 'step5') {
+        const grid = document.getElementById("moodOptions");
+        grid.innerHTML = "";
+        let moods = moodMapping[formData.category] || moodMapping["dinnerware"];
+        moods.forEach(m => {
+            const btn = document.createElement("button");
+            btn.innerText = m.label;
+            btn.onclick = () => { formData.style = m.s; setChoice('mood', m.id, m.label, null); };
+            grid.appendChild(btn);
+        });
+    }
+
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById(nextId).classList.add("active");
+    if (historyStack[historyStack.length - 1] !== nextId) historyStack.push(nextId);
+    updateUI();
 }
 
-function showStep(id) {
-  document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  currentStepIndex = steps.indexOf(id);
-  updateProgress();
+function popStep() {
+    if (historyStack.length <= 1) return;
+    historyStack.pop(); 
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById(historyStack[historyStack.length - 1]).classList.add("active");
+    updateUI();
 }
 
-function prevStep() { if (currentStepIndex > 0) showStep(steps[currentStepIndex - 1]); }
-function nextAuto() { if (currentStepIndex < steps.length - 1) showStep(steps[currentStepIndex + 1]); }
+function updateUI() {
+    document.getElementById("prevBtn").disabled = historyStack.length <= 1;
+    document.getElementById("bar").style.width = (historyStack.length / 6) * 100 + "%";
+    updateSummary();
+}
 
 function setChoice(key, id, label, nextId) {
-  formData[key] = id;
-  formData[key + "_label"] = label;
-  
-  if (key === 'mood') {
-    const moodMap = {
-      "zen": "wabi-sabi, cinematic fog, tea smoke",
-      "warm": "warm glow, golden hour, wooden textures",
-      "luxury": "high contrast, studio lighting, elegant reflections"
-    };
-    formData.style = moodMap[id];
-  }
-  
-  updateSummary();
-  if (nextId) showStep(nextId);
+    formData[key] = id;
+    formData[key + "_label"] = label;
+    if (key === 'model_type') formData.model_label = label;
+    updateSummary();
+    if (nextId) pushStep(nextId);
+}
+
+function selectCategory(id, label) {
+    formData.category = id;
+    formData.category_label = label;
+    formData.items = {};
+    document.getElementById("constraintHint").style.display = (id === 'decor') ? "block" : "none";
+    const cont = document.getElementById("quantityContainer");
+    cont.innerHTML = '';
+    
+    categoryDefaults[id].forEach(item => {
+        if (id !== 'decor') formData.items[item.id] = item.d;
+        const div = document.createElement("div");
+        div.className = "quantity-row";
+        if (id === 'decor') {
+            div.style.cursor = "pointer";
+            div.innerHTML = `<span>${item.l}</span><span style="color:#999;font-size:12px;">点击选择单件</span>`;
+            div.onclick = () => {
+                formData.items = {}; formData.items[item.id] = 1;
+                document.querySelectorAll(".quantity-row").forEach(r => r.classList.remove("row-selected"));
+                div.classList.add("row-selected");
+                updateSummary();
+            };
+        } else {
+            div.innerHTML = `<span>${item.l}</span><div class="counter">
+                <button onclick="changeQty('${item.id}', -1)">-</button>
+                <input id="q_${item.id}" value="${item.d}" readonly>
+                <button onclick="changeQty('${item.id}', 1)">+</button>
+            </div>`;
+        }
+        cont.appendChild(div);
+    });
+    pushStep("step_quantity");
+}
+
+function changeQty(id, delta) {
+    const input = document.getElementById("q_"+id);
+    let v = Math.max(0, parseInt(input.value) + delta);
+    input.value = v;
+    formData.items[id] = v;
+    updateSummary();
 }
 
 function updateSummary() {
-  // 正确体现模型风格的数据
-  const summary = `风格：${formData.model_label} | 用途：${formData.purpose_label} | 包装：${formData.packaging_label} | 场景：${formData.scene_label} | 氛围：${formData.mood_label}`;
-  document.getElementById("summaryText").innerText = summary;
+    const summary = document.getElementById("summaryDetail");
+    let itemStrs = Object.entries(formData.items).filter(([k,v]) => v > 0).map(([k,v]) => {
+        const allItems = Object.values(categoryDefaults).flat();
+        return `${allItems.find(x => x.id === k)?.l} x${v}`;
+    });
+    summary.innerHTML = `
+        <span class="badge">模式</span> <b>${formData.model_label}</b> | 
+        <span class="badge">用途</span> <b>${formData.purpose_label || '未选'}</b><br>
+        <span class="badge">清单</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "未选择"} <br>
+        <span class="badge">场景</span> ${formData.scene_label} | <span class="badge">氛围</span> ${formData.mood_label}
+    `;
 }
 
 async function generate() {
-  if (!formData.scene || !formData.mood) { alert("请完成前方的定制引导步骤"); return; }
-  
-  const genBtn = document.getElementById("genBtn");
-  const resultsDiv = document.getElementById("results");
-  const customTxt = document.getElementById("customInput").value;
-
-  genBtn.disabled = true;
-  document.getElementById("loading").style.display = "block";
-  resultsDiv.innerHTML = "";
-
-  try {
-    const res = await fetch("http://127.0.0.1:8000/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-          model_type: formData.model_type,
-          scene: formData.scene,
-          mood: formData.mood,
-          packaging: formData.packaging,
-          style: formData.style,
-          purpose: formData.purpose,
-          custom: customTxt, // 发送留言数据
-          batch: 3
-        })
-    });
-    
-    const data = await res.json();
-    if (!data.images || data.images.length === 0) { alert("生成超时或后端未响应"); return; }
-
-    data.images.forEach((url, index) => {
-      const card = document.createElement("div");
-      card.className = "image-card";
-      
-      const img = document.createElement("img");
-      const proxyUrl = `http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}&t=${Date.now()}`;
-      img.src = proxyUrl;
-      img.title = "点击查看高清图";
-      img.onclick = () => { 
-        document.getElementById("modalImg").src = proxyUrl; 
-        document.getElementById("modal").style.display = "flex"; 
-      };
-      
-      const btn = document.createElement("button");
-      btn.className = "btn-main";
-      btn.style.marginTop = "10px";
-      btn.innerText = (index === 1 && formData.packaging !== 'none') ? "选定包装方案" : "选定此场景";
-      
-      card.appendChild(img);
-      card.appendChild(btn);
-      resultsDiv.appendChild(card);
-    });
-  } catch (e) { 
-    alert("连接失败，请检查后端 Python 服务是否运行"); 
-  } finally { 
-    genBtn.disabled = false; 
-    document.getElementById("loading").style.display = "none"; 
-  }
+    if (Object.keys(formData.items).length === 0) { alert("请选择器皿"); return; }
+    const btn = document.getElementById("genBtn");
+    btn.disabled = true;
+    document.getElementById("loading").style.display = "block";
+    try {
+        const res = await fetch("http://127.0.0.1:8000/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...formData, mood_label: formData.mood_label, custom: document.getElementById("customInput").value })
+        });
+        const data = await res.json();
+        const resDiv = document.getElementById("results");
+        resDiv.innerHTML = "";
+        data.images.forEach(url => {
+            const card = document.createElement("div");
+            card.className = "image-card";
+            card.innerHTML = `<img src="http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}"><button class="btn-main" style="width:100%; margin-top:10px;">确认设计方案</button>`;
+            resDiv.appendChild(card);
+        });
+    } catch(e) { alert("生成失败，请检查后端服务"); }
+    finally { btn.disabled = false; document.getElementById("loading").style.display = "none"; }
 }
 
-function closeModal() { document.getElementById("modal").style.display = "none"; }
-function resetAll() { if(confirm("确定要重置所有选项吗？")) location.reload(); }
-
-// 初始化进度条
-updateProgress();
+function resetAll() { if(confirm("重置所有选择？")) location.reload(); }
 </script>
 </body>
 </html>

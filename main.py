@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import requests
 import time
 import uuid
+from typing import Dict, Optional
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -17,23 +18,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ===== 数据结构与配置 =====
+# ===== 配置与模型映射 =====
 sessions = {}
 
-# 渲染引擎映射表 (请确保文件名与你本地文件夹一致)
 MODEL_MAP = {
-    "fast": "epiCrealism.safetensors",              # 2GB 快速生成版 (SD 1.5)
-    "realistic": "realvisxlV50_v50LightningBakedvae.safetensors", # 6GB 顶级写实版 (SDXL)
-    "artistic": "dreamshaperXL_lightningDPMSDE.safetensors"       # 6GB 艺术质感版 (SDXL)
+    "fast": "epiCrealism.safetensors",
+    "realistic": "realvisxlV50_v50LightningBakedvae.safetensors",
+    "artistic": "dreamshaperXL_lightningDPMSDE.safetensors"
+}
+
+# 扩展翻译映射，涵盖所有新增器皿
+TRANSLATION_MAP = {
+    # 餐具
+    "dinner_plate": "large dinner plate",
+    "medium_plate": "medium plate",
+    "bowl": "bowl",
+    "sauce_dish": "sauce dish",
+    "large_pot": "large serving pot",
+    # 茶具
+    "teapot": "teapot",
+    "gaiwan": "Gaiwan (tea lidded bowl)",
+    "fair_cup": "fairness cup (Gongdao Bei)",
+    "tea_cup": "tea cup",
+    "tea_sea": "tea sea (Cha Hai)",
+    "tea_tray": "tea tray",
+    "tea_wash": "tea wash bowl",
+    "incense_burner": "incense burner",
+    # 咖啡具
+    "coffee_pot": "coffee pot",
+    "coffee_cup": "coffee cup and saucer",
+    "mug": "ceramic mug",
+    # 摆设
+    "vase": "celadon vase",
+    "lamp": "celadon table lamp",
+    "plaque": "engraved porcelain plaque",
+    "sculpture": "celadon sculpture"
 }
 
 class GenerateRequest(BaseModel):
     model_type: str = "realistic"
-    purpose: str
-    scene: str
+    purpose: str                  # "personal" 或 "gift"
+    category: str = "tea"         # "dinnerware", "coffee", "tea", "decor"
+    items: Dict[str, int] = {}    
+    scene: str                    # 场景 ID
+    scene_prompt: str             # 前端传来的详细英文场景描述
     mood: str
+    mood_label: str
     packaging: str = "none"
-    style: str = ""          
+    style: str = ""               # 氛围触发词
     custom: str = ""              
     batch: int = 3
 
@@ -42,27 +74,23 @@ COMFY_URL = "http://127.0.0.1:8188/prompt"
 # ===== 核心功能函数 =====
 
 def call_comfy(prompt_text, seed, ckpt_name, model_type):
-    # 1. 架构检测
     is_xl = "XL" in ckpt_name or "xl" in ckpt_name
     
-    # 2. 动态参数适配 (修正了导致色彩崩坏的根源)
+    # 动态参数调整
     if is_xl:
-        steps = 8           
-        cfg = 2.0           # Lightning模型严禁高CFG
+        steps, cfg = 8, 2.0           
         width, height = 1344, 768
         sampler = "dpmpp_sde"
         lora_weight = 0.8 if model_type == "artistic" else 0.6
     else:
-        steps = 20          # SD 1.5 步数不宜过高
-        cfg = 5.0           # 降低CFG以防止色彩过饱和/烧焦感
-        width, height = 768, 512 
+        steps, cfg = 20, 5.0           
+        width, height = 768, 512  
         sampler = "dpmpp_2m"
-        lora_weight = 0     # SD 1.5 严禁加载 XL LoRA
+        lora_weight = 0     
 
-    # 3. 精简负面词：移除高权重括号，防止画面逻辑走入死角
     negative_content = (
-        "(two spouts:1.5), (extra spout:1.5), deformed handle, (multiple teapots:1.3), duplicate items, "
-        "lowres, bad quality, blurry, washed out, grey, dark, gloomy, messy background, cluttered table"
+        "bad hands, (two spouts:1.5), deformed handle, multiple teapots, "
+        "lowres, bad quality, blurry, cluttered, text, watermark"
     )
     
     workflow = {
@@ -82,63 +110,57 @@ def call_comfy(prompt_text, seed, ckpt_name, model_type):
         "6": {
             "class_type": "KSampler",
             "inputs": {
-                "seed": seed,
-                "steps": steps,           
-                "cfg": cfg,             
-                "sampler_name": sampler,
-                "scheduler": "karras",
-                "denoise": 1.0,
+                "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler,
+                "scheduler": "karras", "denoise": 1.0,
                 "model": ["2", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["5", 0]
             }
         },
         "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["1", 2] } },
-        "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "SceneForge_Vibe", "images": ["7", 0] } }
+        "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "CeramicCustom", "images": ["7", 0] } }
     }
     
     try:
         res = requests.post(COMFY_URL, json={"prompt": workflow}, timeout=10)
         return res.json()
     except Exception as e:
-        print(f"ComfyUI 连接失败: {e}")
-        return {"error": "connection failed"}
+        return {"error": str(e)}
 
-def build_vibe_prompt(req, is_packaging_focus=False):
-    """
-    重构 Prompt 逻辑：去除过载权重，采用结构化描述
-    """
-    scene_map = {
-        "tea room": "minimalist Chinese tea room, dark wood tea table",
-        "home": "modern living room, white marble tabletop, natural light",
-        "office": "executive mahogany desk, intellectual setting",
-        "gallery": "minimalist art gallery, museum spotlight"
-    }
+def build_vibe_prompt(req: GenerateRequest, is_packaging_focus=False):
+    # 1. 生成器皿清单描述
+    item_parts = []
+    for key, count in req.items.items():
+        if count > 0:
+            name = TRANSLATION_MAP.get(key, key.replace("_", " "))
+            # 如果是摆设类且单选，不加数字以提高权重
+            if req.category == "decor":
+                item_parts.append(f"a masterpiece of {name}")
+            else:
+                item_parts.append(f"{count} {name}")
     
-    # 核心主体：去掉了导致崩溃的 ( :1.5) 高权重
-    subject = "ONE single celadon teapot, exactly ONE spout and ONE handle, 2-3 small matching teacups beside"
+    subject_desc = ", ".join(item_parts) if item_parts else "exquisite celadon porcelain"
     
-    if is_packaging_focus and req.packaging != "none":
-        subject = f"an open {req.packaging} gift box, {subject}"
+    # 2. 包装逻辑
+    if req.purpose == "gift" and req.packaging != "none":
+        pkg_map = {"1": "cardboard box", "2": "luxury gift box", "3": "wooden crate"}
+        pkg_name = pkg_map.get(req.packaging, "gift packaging")
+        if is_packaging_focus:
+            subject = f"an open {pkg_name}, {subject_desc} placed neatly inside"
+        else:
+            subject = f"{subject_desc}, standing next to its {pkg_name}"
+    else:
+        subject = subject_desc
 
-    # 整合客户留言
+    # 3. 组合最终 Prompt (核心：使用 req.scene_prompt)
     user_custom = f", {req.custom}" if req.custom.strip() else ""
     
-    # 最终组装：保持词汇中性，靠底模自身素质出图
     full_prompt = (
-        f"MASTERPIECE, ultra realistic, {subject}, "
-        f"scene: {scene_map.get(req.scene, 'clean background')}, "
-        f"mood: {req.mood} atmosphere, soft natural lighting, "
-        f"style: high-end product photography, {req.style}{user_custom}, "
-        f"depth of field, centered composition, clean layout"
+        f"Longquan celadon porcelain, {subject}, {req.scene_prompt}, "
+        f"{req.mood_label} atmosphere, {req.style}, "
+        f"soft natural lighting, photorealistic, 8k, highly detailed glaze texture{user_custom}"
     )
-    return full_prompt.strip()
+    return full_prompt
 
-# ===== 路由定义 (保持不变) =====
-
-@app.get("/start")
-def start():
-    sid = str(uuid.uuid4())
-    sessions[sid] = {"confirmed": False, "selected_image": None}
-    return {"session_id": sid}
+# ===== 路由定义 =====
 
 @app.post("/generate")
 def generate(req: GenerateRequest):
@@ -146,20 +168,21 @@ def generate(req: GenerateRequest):
     image_urls = []
     prompt_ids = []
 
-    print(f"收到请求: 模型={req.model_type}, 留言={req.custom}")
+    print(f"--- 任务启动: {req.category} | 场景: {req.scene_prompt} ---")
 
     for i in range(req.batch):
-        focus_on_pkg = (i == 1 and req.packaging != "none")
-        view_hint = "close-up shot" if i == 2 else "product photography"
+        # 批次 2 针对礼品模式生成包装特写
+        focus_on_pkg = (i == 1 and req.purpose == "gift")
+        view_hint = "macro shot" if i == 2 else "professional photography"
         
-        prompt = build_vibe_prompt(req, is_packaging_focus=focus_on_pkg) + f", {view_hint}"
+        prompt = build_vibe_prompt(req, focus_on_pkg) + f", {view_hint}"
         seed = int(uuid.uuid4().int % 1e9)
         
         comfy_res = call_comfy(prompt, seed, ckpt_name, req.model_type)
-        pid = comfy_res.get("prompt_id")
-        if pid:
-            prompt_ids.append(pid)
+        if "prompt_id" in comfy_res:
+            prompt_ids.append(comfy_res["prompt_id"])
 
+    # 轮询获取结果
     for pid in prompt_ids:
         urls = get_images(pid)
         if urls:
@@ -169,7 +192,7 @@ def generate(req: GenerateRequest):
 
 def get_images(prompt_id):
     url = f"http://127.0.0.1:8188/history/{prompt_id}"
-    for _ in range(40):
+    for _ in range(50): # 增加等待时间至 60 秒左右
         res = requests.get(url)
         if res.status_code == 200:
             data = res.json()
@@ -192,3 +215,7 @@ def confirm(session_id: str = Body(...), image_url: str = Body(...)):
     if session_id in sessions:
         sessions[session_id].update({"confirmed": True, "selected_image": image_url})
     return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
