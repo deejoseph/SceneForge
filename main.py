@@ -61,18 +61,30 @@ def get_item_desc(items):
 
 # ===== 1. 材质与品牌常量定义 =====
 
-# 锁定粉青物理属性：白胎、青中泛蓝、无开片、极致均匀
-FENQING_BASE = (
-    "exquisite Powder Celadon (Fenqing), white porcelain substrate, thick opaque glaze, "
-    "color is pale blue-green with a strong (bluish undertone:1.3), "
-    "pure monochromatic glaze, immaculate surfaces, no crackles, no underglaze bleeding, "
-    "avoiding yellow or grass green tints, refined and clean aesthetic"
-)
+# ===== 材质/釉色库定义 =====
 
-# 品牌指纹：图 5 Logo 的颜色与结构描述
+GLAZE_LIBRARY = {
+    "fenqing": (
+        "exquisite Powder Celadon (Fenqing), solid stoneware body, thick opaque glaze, "
+        "color is pale bluish-celadon with a (strong bluish undertone:1.3), "
+        "immaculate uniform surface, no crackles, smooth polished finish"
+    ),
+    "meiziqing": (
+        "premium Meiziqing celadon, thick opacified lime-alkali glaze, "
+        "color is a lush (fresh bluish-green:1.2), strictly avoiding sky blue, "
+        "liquid-like glossy finish with deep luster, viscous and rich texture, no transparency"
+    ),
+    "yingqing": (
+        "premium Hutian Yingqing, pure modern white porcelain substrate, "
+        "highly dense body, (thick opacified glaze:1.2), resembling the texture of fine jade, "
+        "color is a delicate pale watery-green, viscous and rich glaze, bright lustrous finish"
+    )
+}
+
+# 品牌标识 (Logo) 的物理呈现
 BRANDING_STAMP = (
-    "subtle brand logo on the porcelain surface, (dark taupe outer shell with a terracotta core:1.1), "
-    "crisp minimalist graphic, professional luxury branding"
+    "subtle brand logo, (dark taupe and terracotta colors:1.1), "
+    "crisp minimalist graphic on the porcelain surface"
 )
 
 # ===== 2. 函数实现 =====
@@ -88,16 +100,21 @@ def get_pkg_name(p_id):
 def build_delivery_prompts(req: GenerateRequest) -> List[str]:
     item_desc = get_item_desc(req.items)
     
-    # 核心材质 + 品牌指纹 的组合
-    base_material = f"{FENQING_BASE}, {BRANDING_STAMP}, masterpiece"
-    tech_suffix = "photorealistic, 8k resolution, cinematic lighting, elegant aesthetic"
+    # 动态获取釉色，如果请求中没有指定则默认使用粉青
+    # 建议在 GenerateRequest 增加 glaze 字段，如 'fenqing', 'meiziqing', 'yingqing'
+    glaze_key = getattr(req, 'glaze', 'fenqing')
+    selected_glaze = GLAZE_LIBRARY.get(glaze_key, GLAZE_LIBRARY['fenqing'])
+    
+    # 基础物理定义组装
+    base_material = f"{selected_glaze}, {BRANDING_STAMP}, masterpiece"
+    tech_suffix = "photorealistic, 8k, cinematic lighting, elegant aesthetic"
     user_custom = f", {req.custom}" if req.custom.strip() else ""
     
     prompts = []
 
-    # 视角 1: 产品展示 (侧重微距与材质纯净度)
+    # 视角 1: 产品展示 (侧重材质质感)
     prompts.append(
-        f"{base_material}, {item_desc}, macro photography, blurred minimalist background, "
+        f"{base_material}, {item_desc}, macro photography, blurred simple background, "
         f"centered composition, studio lighting, {tech_suffix}{user_custom}"
     )
 
