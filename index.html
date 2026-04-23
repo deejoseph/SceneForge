@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -116,7 +116,7 @@
   <h3>1. 您的定制用途是？</h3>
   <div class="options-grid">
     <button onclick="setChoice('purpose', 'personal', '个人自用', 'step_category')">个人自用</button>
-    <button onclick="setChoice('purpose', 'gift', '商务馈赠', 'step2_gift')">商务馈赠</button>
+    <button onclick="setChoice('purpose', 'gift', '商务馈赠', 'step_category')">商务馈赠</button>
   </div>
 </div>
 
@@ -131,31 +131,29 @@
 </div>
 
 <div class="step" id="step_quantity">
-  <h3 id="qtyTitle">定制清单明细</h3>
+  <h3 id="qtyTitle">&#x5B9A;&#x5236;&#x6E05;&#x5355;&#x660E;&#x7EC6;</h3>
   <div id="constraintHint" style="display:none; background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; color: #856404;">
-    ⚠️ <b>系统提示：</b> 为了确保 AI 场景渲染的构图准确性，“家居摆设”类目每次仅支持单件定制。
+    &#9888;&#65039; <b>&#x7CFB;&#x7EDF;&#x63D0;&#x793A;&#xFF1A;</b> &#x4E3A;&#x4E86;&#x786E;&#x4FDD; AI &#x573A;&#x666F;&#x6E32;&#x67D3;&#x7684;&#x6784;&#x56FE;&#x51C6;&#x786E;&#x6027;&#xFF0C;&#x201C;&#x5BB6;&#x5C45;&#x6446;&#x8BBE;&#x201D;&#x7C7B;&#x76EE;&#x6BCF;&#x6B21;&#x4EC5;&#x652F;&#x6301;&#x5355;&#x4EF6;&#x5B9A;&#x5236;&#x3002;
   </div>
   <div id="quantityContainer" style="max-width: 450px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;"></div>
-  <button class="btn-main" onclick="pushStep('step4')">下一步：确认场景 ➔</button>
-</div>
-
-<div class="step" id="step2_gift">
-  <h3>2. 请选择赠礼包装风格</h3>
-  <div class="options-grid" style="gap: 20px;">
-    <div class="pkg-card" id="pkg_1" onclick="setPackaging('1', '简易纸盒')">
-      <img src="imgs/pkg_simple.jpg" alt="简易纸盒">
-      <div style="padding:10px;"><b>简易环保纸盒</b><br><small>简约自然 / 环保降解</small></div>
-    </div>
-    <div class="pkg-card" id="pkg_2" onclick="setPackaging('2', '精装礼盒')">
-      <img src="imgs/pkg_luxury.jpg" alt="精装礼盒">
-      <div style="padding:10px;"><b>精美丝缎礼盒</b><br><small>雅致礼遇 / 烫金工艺</small></div>
-    </div>
-    <div class="pkg-card" id="pkg_3" onclick="setPackaging('3', '高端木盒')">
-      <img src="imgs/pkg_wood.jpg" alt="高端木盒">
-      <div style="padding:10px;"><b>高档珍藏木盒</b><br><small>榫卯结构 / 传世收藏</small></div>
+  <div id="packagingSection" style="display:none; margin: 30px 0 20px;">
+    <h3>2.5 &#x8BF7;&#x9009;&#x62E9;&#x5546;&#x52A1;&#x9988;&#x8D60;&#x5305;&#x88C5;</h3>
+    <div class="options-grid" style="gap: 20px;">
+      <div class="pkg-card" id="pkg_1" onclick="setPackaging('1', '&#x7B80;&#x6613;&#x7EB8;&#x76D2;')">
+        <img src="imgs/pkg_simple.jpg" alt="&#x7B80;&#x6613;&#x7EB8;&#x76D2;">
+        <div style="padding:10px;"><b>&#x7B80;&#x6613;&#x73AF;&#x4FDD;&#x7EB8;&#x76D2;</b><br><small>&#x7B80;&#x7EA6;&#x81EA;&#x7136; / &#x73AF;&#x4FDD;&#x964D;&#x89E3;</small></div>
+      </div>
+      <div class="pkg-card" id="pkg_2" onclick="setPackaging('2', '&#x7CBE;&#x88C5;&#x793C;&#x76D2;')">
+        <img src="imgs/pkg_luxury.jpg" alt="&#x7CBE;&#x88C5;&#x793C;&#x76D2;">
+        <div style="padding:10px;"><b>&#x7CBE;&#x7F8E;&#x4E1D;&#x7ED2;&#x793C;&#x76D2;</b><br><small>&#x96C5;&#x81F4;&#x793C;&#x9047; / &#x70EB;&#x91D1;&#x5DE5;&#x827A;</small></div>
+      </div>
+      <div class="pkg-card" id="pkg_3" onclick="setPackaging('3', '&#x9AD8;&#x7AEF;&#x6728;&#x76D2;')">
+        <img src="imgs/pkg_wood.jpg" alt="&#x9AD8;&#x7AEF;&#x6728;&#x76D2;">
+        <div style="padding:10px;"><b>&#x9AD8;&#x6863;&#x73CD;&#x85CF;&#x6728;&#x76D2;</b><br><small>&#x699C;&#x537F;&#x7ED3;&#x6784; / &#x4F20;&#x4E16;&#x6536;&#x85CF;</small></div>
+      </div>
     </div>
   </div>
-  <button class="btn-main" style="margin-top:20px;" onclick="pushStep('step4')">确认包装并继续 ➔</button>
+  <button class="btn-main" onclick="goToSceneStep()">&#x4E0B;&#x4E00;&#x6B65;&#xFF1A;&#x786E;&#x8BA4;&#x573A;&#x666F; &#10145;</button>
 </div>
 
 <div class="step" id="step4">
@@ -363,6 +361,11 @@ function updateUI() {
 function setChoice(key, id, label, nextId) {
     formData[key] = id;
     formData[key + "_label"] = label;
+    if (key === 'purpose' && id !== 'gift') {
+        formData.packaging = 'none';
+        formData.packaging_label = '&#x7CFB;&#x7EDF;&#x9ED8;&#x8BA4;';
+        document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
+    }
     
     // 如果是选择了氛围感（最后一步）
     if (key === 'mood') {
@@ -374,6 +377,7 @@ function setChoice(key, id, label, nextId) {
     }
     
     updateSummary();
+    updatePackagingSection();
     if (nextId) pushStep(nextId);
 }
 
@@ -415,6 +419,7 @@ function selectCategory(id, label) {
         }
         cont.appendChild(div);
     });
+    updatePackagingSection();
     pushStep("step_quantity");
 }
 
@@ -432,14 +437,34 @@ function updateSummary() {
         const allItems = Object.values(categoryDefaults).flat();
         return `${allItems.find(x => x.id === k)?.l} x${v}`;
     });
+    const packagingLine = formData.purpose === 'gift'
+        ? ` | <span class="badge">&#x5305;&#x88C5;</span> ${formData.packaging_label}`
+        : "";
     summary.innerHTML = `
-        <span class="badge">引擎</span> <b>${formData.model_label}</b> | 
-        <span class="badge">釉色</span> <b style="color:var(--primary-color)">${formData.glaze_label}</b><br>
-        <span class="badge">用途</span> <b>${formData.purpose_label || '未选'}</b><br>
-        <span class="badge">清单</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "未选择"} | 
-        <span class="badge">包装</span> ${formData.packaging_label}<br>
-        <span class="badge">场景</span> ${formData.scene_label} | <span class="badge">氛围</span> ${formData.mood_label}
+        <span class="badge">&#x5F15;&#x64CE;</span> <b>${formData.model_label}</b> | 
+        <span class="badge">&#x91C9;&#x8272;</span> <b style="color:var(--primary-color)">${formData.glaze_label}</b><br>
+        <span class="badge">&#x7528;&#x9014;</span> <b>${formData.purpose_label || "&#x672A;&#x9009;"}</b><br>
+        <span class="badge">&#x6E05;&#x5355;</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "&#x672A;&#x9009;&#x62E9;"}${packagingLine}<br>
+        <span class="badge">&#x573A;&#x666F;</span> ${formData.scene_label} | <span class="badge">&#x6C1B;&#x56F4;</span> ${formData.mood_label}
     `;
+}
+
+function updatePackagingSection() {
+    const section = document.getElementById("packagingSection");
+    if (!section) return;
+    section.style.display = formData.purpose === 'gift' ? "block" : "none";
+}
+
+function goToSceneStep() {
+    if (Object.keys(formData.items).length === 0) {
+        alert("\u8bf7\u9009\u62e9\u5668\u76bf");
+        return;
+    }
+    if (formData.purpose === 'gift' && formData.packaging === 'none') {
+        alert("\u8bf7\u9009\u62e9\u5546\u52a1\u9988\u8d60\u5305\u88c5");
+        return;
+    }
+    pushStep('step4');
 }
 
 async function generate() {
