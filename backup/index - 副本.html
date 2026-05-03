@@ -1,0 +1,750 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>青瓷定制 - 场景氛围确认系统</title>
+<style>
+  :root { --primary-color: #4a6a5e; --bg-color: #fcfcfc; }
+  body { font-family: "Microsoft YaHei", sans-serif; padding: 40px; background: var(--bg-color); color: #333; line-height: 1.6; }
+  h2, h3 { color: var(--primary-color); }
+  #progress { width: 100%; height: 6px; background: #eee; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+  #bar { height: 100%; width: 0%; background: var(--primary-color); transition: 0.5s; }
+  .step { display: none; margin-top: 30px; animation: fadeIn 0.3s; }
+  .active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  #topControls { margin-bottom: 30px; display: flex; gap: 15px; }
+  button { padding: 10px 20px; border: 1px solid var(--primary-color); background: white; color: var(--primary-color); cursor: pointer; border-radius: 4px; }
+  button:hover { background: var(--primary-color); color: white; }
+  button:disabled { border-color: #ccc; color: #ccc; cursor: not-allowed; }
+  .btn-main { background: var(--primary-color); color: white; font-weight: bold; border: none; }
+  .options-grid { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* 包装卡片样式 */
+  .pkg-card {
+    border: 2px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 220px;
+    text-align: center;
+    transition: 0.3s;
+    background: #fff;
+    overflow: hidden;
+  }
+  .pkg-card:hover { border-color: var(--primary-color); transform: translateY(-5px); }
+  .pkg-card.selected { border-color: var(--primary-color); background: #f0f4f2; box-shadow: 0 4px 12px rgba(74,106,94,0.2); }
+  .pkg-card img { width: 100%; height: 150px; object-fit: cover; }
+
+  #generator { margin-top: 60px; border-top: 1px solid #ddd; padding-top: 40px; }
+  #finalPromptBox { background: #f0f4f2; padding: 20px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; }
+  .quantity-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 10px; background: #fff; border-radius: 6px; border: 1px solid #eee; }
+  .counter input { width: 40px; text-align: center; border: 1px solid #ddd; margin: 0 5px; }
+  #results { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+  .image-card { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 400px; }
+  .image-card img { width: 100%; border-radius: 4px; }
+  .badge { background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 5px; }
+  .row-selected { border-color: var(--primary-color) !important; background: #f0f4f2 !important; }
+  .customer-bar { position: sticky; top: 0; z-index: 20; background: #fff; border: 1px solid #e6ece8; border-radius: 8px; padding: 14px; margin: 0 0 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .customer-fields { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr); gap: 12px; }
+  .customer-fields input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d9e2dd; border-radius: 4px; }
+  .helper-text { font-size: 12px; color: #66736d; margin-top: 8px; }
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-top: 16px; }
+  .product-card { border: 2px solid #edf1ef; border-radius: 8px; background: #fff; cursor: pointer; padding: 12px; transition: 0.2s; min-height: 210px; }
+  .product-card:hover { border-color: var(--primary-color); transform: translateY(-2px); }
+  .product-card.selected { border-color: var(--primary-color); background: #f0f4f2; box-shadow: 0 4px 12px rgba(74,106,94,0.16); }
+  .product-card img { width: 100%; height: 130px; object-fit: contain; display: block; margin-bottom: 8px; background: #f8faf9; border-radius: 4px; }
+  .product-card b { display: block; color: var(--primary-color); }
+  .fusion-note { background: #fff8e6; border: 1px solid #f1d28a; border-radius: 6px; padding: 12px; color: #72520b; margin: 14px 0; }
+  @media (max-width: 720px) { .customer-fields { grid-template-columns: 1fr; } body { padding: 18px; } }
+/* 图片放大遮罩层 */
+#overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000;
+  cursor: zoom-out;
+  justify-content: center;
+  align-items: center;
+}
+#overlay img {
+  max-width: 90%;
+  max-height: 90%;
+  border: 3px solid white;
+  border-radius: 4px;
+}
+#formalOrderBtn {
+    background-color: #c49a6c; /* 建议换个颜色，如类似金/铜色，区分于普通的绿色 */
+    border: none;
+    box-shadow: 0 4px 15px rgba(196,154,108,0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+</style>
+</head>
+<body>
+
+<h2>青瓷定制引导：场景确认</h2>
+<div class="customer-bar">
+  <div class="customer-fields">
+    <label>
+      <span>&#x5BA2;&#x6237;&#x540D;&#x79F0;</span>
+      <input id="customerName" type="text" placeholder="&#x7528;&#x4E8E;&#x5339;&#x914D;&#x74F7;&#x97F5;&#x4EA7;&#x54C1;&#x56FE;" oninput="syncCustomerInfo()">
+    </label>
+    <label>
+      <span>&#x8054;&#x7CFB;&#x65B9;&#x5F0F;</span>
+      <input id="customerContact" type="text" placeholder="&#x624B;&#x673A;&#x6216;&#x5FAE;&#x4FE1;&#x5907;&#x6CE8;" oninput="syncCustomerInfo()">
+    </label>
+  </div>
+  <div class="helper-text">&#x4EC5;&#x7528;&#x4E8E;&#x8BA9;&#x672C;&#x6B21;&#x751F;&#x6210;&#x7684;&#x56FE;&#x7247;&#x80FD;&#x591F;&#x5BF9;&#x5E94;&#x5230;&#x5BA2;&#x6237;&#xFF0C;&#x4E0D;&#x7528;&#x4E8E;&#x6536;&#x96C6;&#x9690;&#x79C1;&#x4FE1;&#x606F;&#x3002;</div>
+</div>
+<div id="progress"><div id="bar"></div></div>
+
+<div id="topControls" style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;">
+  <div>
+    <button id="prevBtn" onclick="popStep()" disabled>⬅ 上一步</button>
+    <button onclick="resetAll()" style="margin-left: 10px;">🔄 重新开始</button>
+  </div>
+
+  <div id="actionArea">
+    <button id="formalOrderBtn" class="btn-main"
+            onclick="goToFormalOrder()"
+            style="display:none; background: #c49a6c; border: none; padding: 12px 25px;">
+      ✨ 场景已确认，进入正式定制环节
+    </button>
+  </div>
+</div>
+
+<div class="step active" id="step0">
+  <h3>0.1 选择核心釉色</h3>
+  <div style="font-size:13px; color:#666; margin-bottom:12px;">
+    釉色会在后台自动决定渲染引擎、提示词锚点和参数，客户无需选择引擎。
+  </div>
+  <div class="options-grid">
+    <button id="glaze_fenqing" onclick="setGlaze('fenqing', '粉青釉')">粉青釉 (温润如脂)</button>
+    <button id="glaze_meiziqing" onclick="setGlaze('meiziqing', '梅子青')">梅子青 (青翠欲滴)</button>
+    <button id="glaze_yingqing" onclick="setGlaze('yingqing', '影青釉')">影青釉 (瓷胎玉感)</button>
+  </div>
+
+  <button class="btn-main" style="margin-top:30px; width:100%;" id="startBtn" onclick="pushStep('step1')" disabled>请先选择釉色</button>
+</div>
+
+<div class="step" id="step1">
+  <h3>1. 您的定制用途是？</h3>
+  <div class="options-grid">
+    <button onclick="setChoice('purpose', 'personal', '个人自用', 'step_category')">个人自用</button>
+    <button onclick="setChoice('purpose', 'gift', '商务馈赠', 'step_category')">商务馈赠</button>
+  </div>
+</div>
+
+<div class="step" id="step_category">
+  <h3>1.5 &#x4ECE; D:\PixelSmile\imgs &#x9009;&#x62E9;&#x4EA7;&#x54C1;&#x5668;&#x5F62;&#x56FE;</h3>
+  <div class="helper-text">&#x8FD9;&#x91CC;&#x9009;&#x62E9;&#x7684;&#x662F;&#x5DF2;&#x53BB;&#x80CC;&#x666F;&#x7684;&#x4EA7;&#x54C1;&#x5668;&#x5F62;&#x7D20;&#x6750;&#x3002;&#x70B9;&#x51FB;&#x540E;&#x4F7F;&#x7528;&#x4E0B;&#x65B9;&#x6309;&#x94AE;&#x8FDB;&#x5165;&#x74F7;&#x97F5;&#x878D;&#x5408;&#x6D41;&#x7A0B;&#x3002;</div>
+  <div class="product-grid" id="productGrid"></div>
+  <div class="fusion-note">&#x5F53;&#x524D;&#x4EC5;&#x4FDD;&#x7559;&#x74F7;&#x97F5;&#x8DF3;&#x8F6C;&#x4F4D;&#x7F6E;&#xFF1A;&#x8FD9;&#x662F;&#x4F2A;&#x8DF3;&#x8F6C;&#xFF0C;&#x6682;&#x65F6;&#x4E0D;&#x4F1A;&#x771F;&#x6B63;&#x6253;&#x5F00; CeramicFusion&#x3002;</div>
+  <button class="btn-main" id="fusionJumpBtn" onclick="openCeramicFusion()" disabled>&#x9009;&#x62E9;&#x5668;&#x5F62;&#x540E;&#x8DF3;&#x8F6C;&#x74F7;&#x97F5;&#x878D;&#x5408;&#xFF08;&#x4F2A;&#xFF09;</button>
+</div>
+
+<div class="step" id="step_fusion_return">
+  <h3>2. &#x5173;&#x8054;&#x74F7;&#x97F5;&#x4EA7;&#x54C1;&#x521D;&#x7A3F;</h3>
+  <div id="fusionReturnDetail" class="fusion-note"></div>
+  <button class="btn-main" onclick="linkCustomerProduct()">&#x5DF2;&#x5B8C;&#x6210;&#x74F7;&#x97F5;&#x878D;&#x5408;&#xFF0C;&#x5173;&#x8054;&#x4EA7;&#x54C1;&#x56FE;</button>
+</div>
+
+<div class="step" id="step_quantity">
+  <h3 id="qtyTitle">&#x4EA7;&#x54C1;&#x521D;&#x7A3F;&#x4E0E;&#x5305;&#x88C5;&#x786E;&#x8BA4;</h3>
+  <div id="constraintHint" style="display:none; background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; color: #856404;">
+    &#9888;&#65039; <b>&#x7CFB;&#x7EDF;&#x63D0;&#x793A;&#xFF1A;</b> &#x4E3A;&#x4E86;&#x786E;&#x4FDD; AI &#x573A;&#x666F;&#x6E32;&#x67D3;&#x7684;&#x6784;&#x56FE;&#x51C6;&#x786E;&#x6027;&#xFF0C;&#x201C;&#x5BB6;&#x5C45;&#x6446;&#x8BBE;&#x201D;&#x7C7B;&#x76EE;&#x6BCF;&#x6B21;&#x4EC5;&#x652F;&#x6301;&#x5355;&#x4EF6;&#x5B9A;&#x5236;&#x3002;
+  </div>
+  <div id="quantityContainer" style="max-width: 680px; margin-bottom: 20px;"></div>
+  <div id="packagingSection" style="display:none; margin: 30px 0 20px;">
+    <h3>2.5 &#x8BF7;&#x9009;&#x62E9;&#x5546;&#x52A1;&#x9988;&#x8D60;&#x5305;&#x88C5;</h3>
+    <div class="options-grid" style="gap: 20px;">
+      <div class="pkg-card" id="pkg_1" onclick="setPackaging('1', '&#x7B80;&#x6613;&#x7EB8;&#x76D2;')">
+        <img src="file:///D:/PixelSmile/imgs/package/pkg_simple.jpg" alt="&#x7B80;&#x6613;&#x7EB8;&#x76D2;">
+        <div style="padding:10px;"><b>&#x7B80;&#x6613;&#x73AF;&#x4FDD;&#x7EB8;&#x76D2;</b><br><small>&#x7B80;&#x7EA6;&#x81EA;&#x7136; / &#x73AF;&#x4FDD;&#x964D;&#x89E3;</small></div>
+      </div>
+      <div class="pkg-card" id="pkg_2" onclick="setPackaging('2', '&#x7CBE;&#x88C5;&#x793C;&#x76D2;')">
+        <img src="file:///D:/PixelSmile/imgs/package/pkg_luxury.jpg" alt="&#x7CBE;&#x88C5;&#x793C;&#x76D2;">
+        <div style="padding:10px;"><b>&#x7CBE;&#x7F8E;&#x4E1D;&#x7ED2;&#x793C;&#x76D2;</b><br><small>&#x96C5;&#x81F4;&#x793C;&#x9047; / &#x70EB;&#x91D1;&#x5DE5;&#x827A;</small></div>
+      </div>
+      <div class="pkg-card" id="pkg_3" onclick="setPackaging('3', '&#x9AD8;&#x7AEF;&#x6728;&#x76D2;')">
+        <img src="file:///D:/PixelSmile/imgs/package/pkg_wood.jpg" alt="&#x9AD8;&#x7AEF;&#x6728;&#x76D2;">
+        <div style="padding:10px;"><b>&#x9AD8;&#x6863;&#x73CD;&#x85CF;&#x6728;&#x76D2;</b><br><small>&#x699C;&#x537F;&#x7ED3;&#x6784; / &#x4F20;&#x4E16;&#x6536;&#x85CF;</small></div>
+      </div>
+    </div>
+  </div>
+  <button class="btn-main" onclick="goToSceneStep()">&#x4E0B;&#x4E00;&#x6B65;&#xFF1A;&#x786E;&#x8BA4;&#x573A;&#x666F; &#10145;</button>
+</div>
+
+<div class="step" id="step4">
+  <h3>3. 确认摆放位置</h3>
+  <div style="font-size: 13px; color: #666; margin-bottom: 15px;">* 针对您的选择，推荐以下陈设方案：</div>
+  <div class="options-grid" id="sceneOptions"></div>
+</div>
+
+<div class="step" id="step5">
+  <h3>4. 您追求的整体氛围感？</h3>
+  <div class="options-grid" id="moodOptions"></div>
+</div>
+
+<div id="generator">
+  <h2>氛围预览生成</h2>
+  <div id="finalPromptBox">
+    <strong>当前定制方案：</strong>
+    <div id="summaryDetail" style="margin-top:10px; font-size:14px; color:#555;">完成上方步骤即可生成...</div>
+    <div style="margin-top:10px; font-size:12px; color:var(--primary-color); border-top:1px solid #e0e0e0; padding-top:10px;">
+      💡 <b>AI 交付说明：</b>系统将自动为您生成三张图：<br>
+      <span id="deliveryHint">产品视角、使用环境、社交互动视角</span>
+    </div>
+  </div>
+  <input type="text" id="customInput" style="width:100%; padding:12px; margin:10px 0; box-sizing:border-box;" placeholder="补充需求：如背景加一支梅花...">
+  <button class="btn-main" id="genBtn" onclick="generate()"
+        style="padding: 15px 40px; font-size: 18px; background: #ccc; cursor: not-allowed;"
+        disabled>完成氛围选择后开启渲染</button>
+  <div id="loading" style="display:none; color:var(--primary-color); margin:20px 0; font-weight:bold;">AI 正在渲染三个维度的构图，请稍候...</div>
+  <div id="results"></div>
+</div>
+
+<script>
+let historyStack = ["step0"];
+let formData = {
+  customer_name: "", customer_contact: "",
+  glaze: "", glaze_label: "未选择",
+  model_type: "", model_label: "由釉色自动匹配",
+  purpose: "", purpose_label: "",
+  category: "dinnerware", category_label: "",
+  items: {},
+  selected_product_id: "", selected_product_label: "", selected_product_file: "", selected_product_category: "",
+  fused_product_path: "", fusion_linked: false,
+  scene: "", scene_label: "未选择", scene_prompt: "",
+  mood: "", mood_label: "未选择",
+  packaging: "none", packaging_label: "系统默认",
+  style: ""
+};
+
+const glazeRuntime = {
+    fenqing: { model_type: "realistic", model_label: "粉青釉专用写实引擎", glazeCode: "fq", glazeFile: "glaze_fq_1_new.png" },
+    meiziqing: { model_type: "artistic", model_label: "梅子青高光质感引擎", glazeCode: "mzq", glazeFile: "glaze_mzq_1_new.png" },
+    yingqing: { model_type: "fast", model_label: "影青釉快速预览引擎", glazeCode: "yq", glazeFile: "glaze_yq_1_new.png" }
+};
+
+const ceramicFusionProducts = {
+    dinner_plate: { category: "tableware", product: "no_bg_plate_l_2_new.png" },
+    medium_plate: { category: "tableware", product: "no_bg_plate_m_1_new.png" },
+    bowl: { category: "tableware", product: "no_bg_bowl_1_new.png" },
+    sauce_dish: { category: "tableware", product: "no_bg_sauce_dish_1_new.png" },
+    large_pot: { category: "tableware", product: "no_bg_fruit_bowl_1_new.png" },
+    teapot: { category: "teaware", product: "no_bg_teapot_1_new.png" },
+    gaiwan: { category: "teaware", product: "no_bg_gaiwan_1_new.png" },
+    fair_cup: { category: "teaware", product: "no_bg_fairness_cup_1_new.png" },
+    tea_cup: { category: "teaware", product: "no_bg_teacup_1_new.png" },
+    tea_sea: { category: "teaware", product: "no_bg_tea_basin_1_new.png" },
+    tea_tray: { category: "teaware", product: "no_bg_tea_basin_1_new.png" },
+    tea_wash: { category: "teaware", product: "no_bg_tea_basin_1_new.png" },
+    incense_burner: { category: "teaware", product: "no_bg_incense_burner_1_new.png" },
+    coffee_pot: { category: "coffeeware", product: "no_bg_coffee_pot_1_new.png" },
+    coffee_cup: { category: "coffeeware", product: "no_bg_cup_saucer_1_new.png" },
+    mug: { category: "coffeeware", product: "no_bg_mug_1_new.png" },
+    vase: { category: "homedecor", product: "no_bg_vase_mei_1.png" },
+    lamp: { category: "homedecor", product: "no_bg_vase_lamp_base_1.png" },
+    plaque: { category: "homedecor", product: "no_bg_plaque_1.png" },
+    sculpture: { category: "homedecor", product: "no_bg_Sculpture_1.png" }
+};
+
+const productCatalog = [
+    { id: "dinner_plate", label: "Large Plate", category: "tableware", file: "no_bg_plate_l_2_new.png" },
+    { id: "medium_plate", label: "Medium Plate", category: "tableware", file: "no_bg_plate_m_1_new.png" },
+    { id: "bowl", label: "Bowl", category: "tableware", file: "no_bg_bowl_1_new.png" },
+    { id: "sauce_dish", label: "Sauce Dish", category: "tableware", file: "no_bg_sauce_dish_1_new.png" },
+    { id: "large_pot", label: "Fruit Bowl", category: "tableware", file: "no_bg_fruit_bowl_1_new.png" },
+    { id: "teapot", label: "Teapot", category: "teaware", file: "no_bg_teapot_1_new.png" },
+    { id: "gaiwan", label: "Gaiwan", category: "teaware", file: "no_bg_gaiwan_1_new.png" },
+    { id: "fair_cup", label: "Fair Cup", category: "teaware", file: "no_bg_fairness_cup_1_new.png" },
+    { id: "tea_cup", label: "Tea Cup", category: "teaware", file: "no_bg_teacup_1_new.png" },
+    { id: "coffee_pot", label: "Coffee Pot", category: "coffeeware", file: "no_bg_coffee_pot_1_new.png" },
+    { id: "coffee_cup", label: "Cup Saucer", category: "coffeeware", file: "no_bg_cup_saucer_1_new.png" },
+    { id: "mug", label: "Mug", category: "coffeeware", file: "no_bg_mug_1_new.png" },
+    { id: "vase", label: "Vase", category: "homedecor", file: "no_bg_vase_mei_1.png" },
+    { id: "lamp", label: "Lamp Base", category: "homedecor", file: "no_bg_vase_lamp_base_1.png" },
+    { id: "plaque", label: "Plaque", category: "homedecor", file: "no_bg_plaque_1.png" },
+    { id: "sculpture", label: "Sculpture", category: "homedecor", file: "no_bg_Sculpture_1.png" }
+];
+
+function syncCustomerInfo() {
+    formData.customer_name = document.getElementById("customerName").value.trim();
+    formData.customer_contact = document.getElementById("customerContact").value.trim();
+    checkStep0Completion();
+    updateSummary();
+}
+
+function renderProductGallery() {
+    const grid = document.getElementById("productGrid");
+    if (!grid || grid.dataset.ready === "1") return;
+    grid.innerHTML = "";
+    productCatalog.forEach(product => {
+        const card = document.createElement("div");
+        card.className = "product-card";
+        card.id = `product_${product.id}`;
+        card.onclick = () => selectProduct(product.id);
+        card.innerHTML = `
+            <img src="file:///D:/PixelSmile/imgs/${product.category}/${product.file}" alt="${product.label}">
+            <b>${product.label}</b>
+            <small>D:\\PixelSmile\\imgs\\${product.category}\\${product.file}</small>
+        `;
+        grid.appendChild(card);
+    });
+    grid.dataset.ready = "1";
+}
+
+function selectProduct(productId) {
+    const product = productCatalog.find(p => p.id === productId);
+    if (!product) return;
+    const sceneCategory = { tableware: "dinnerware", teaware: "tea", coffeeware: "coffee", homedecor: "decor" }[product.category] || "dinnerware";
+    formData.category = sceneCategory;
+    formData.category_label = product.category;
+    formData.items = { [product.id]: 1 };
+    formData.selected_product_id = product.id;
+    formData.selected_product_label = product.label;
+    formData.selected_product_file = product.file;
+    formData.selected_product_category = product.category;
+    formData.fused_product_path = "";
+    formData.fusion_linked = false;
+    document.querySelectorAll(".product-card").forEach(c => c.classList.remove("selected"));
+    document.getElementById(`product_${product.id}`).classList.add("selected");
+    document.getElementById("fusionJumpBtn").disabled = false;
+    updateSummary();
+}
+
+function setGlaze(id, label) {
+    formData.glaze = id;
+    formData.glaze_label = label;
+    const runtime = glazeRuntime[id] || glazeRuntime.fenqing;
+    formData.model_type = runtime.model_type;
+    formData.model_label = runtime.model_label;
+
+    // UI 高亮切换：增加背景色切换，视觉反馈更强
+    document.querySelectorAll("[id^='glaze_']").forEach(b => {
+        b.style.borderColor = "#eee";
+        b.style.background = "white";
+    });
+    const activeBtn = document.getElementById("glaze_" + id);
+    activeBtn.style.borderColor = "var(--primary-color)";
+    activeBtn.style.background = "#f0f4f2"; // 选中的浅绿色背景
+
+    checkStep0Completion();
+    updateSummary();
+}
+
+function checkStep0Completion() {
+    const btn = document.getElementById("startBtn");
+    if (formData.customer_name && formData.customer_contact && formData.glaze) {
+        btn.disabled = false;
+        btn.innerText = "开启定制之旅 ➔";
+        btn.style.background = "var(--primary-color)"; // 变色提醒
+        btn.style.color = "white";
+        btn.style.cursor = "pointer";
+    } else {
+        // 增加反向锁定逻辑，确保万无一失
+        btn.disabled = true;
+        btn.innerText = "请先选择釉色";
+        btn.style.background = "#ccc";
+        btn.style.cursor = "not-allowed";
+    }
+}
+
+const categoryDefaults = {
+    "dinnerware": [
+        {id:"dinner_plate", l:"大盘", d:6}, {id:"medium_plate", l:"中盘", d:6},
+        {id:"bowl", l:"碗", d:6}, {id:"sauce_dish", l:"味碟", d:6}, {id:"large_pot", l:"大盆", d:1}
+    ],
+    "tea": [
+        {id:"teapot", l:"茶壶", d:1}, {id:"gaiwan", l:"盖碗", d:1}, {id:"fair_cup", l:"公道杯", d:1},
+        {id:"tea_cup", l:"品茗杯", d:6}, {id:"tea_sea", l:"茶海", d:1}, {id:"tea_tray", l:"茶盘", d:1},
+        {id:"tea_wash", l:"茶洗", d:1}, {id:"incense_burner", l:"薰香炉", d:1}
+    ],
+    "coffee": [
+        {id:"coffee_pot", l:"咖啡壶", d:1}, {id:"coffee_cup", l:"咖啡杯碟", d:2}, {id:"mug", l:"马克杯(Mug)", d:2}
+    ],
+    "decor": [
+        {id:"vase", l:"精美花瓶", d:1},
+        {id:"lamp", l:"艺术台灯", d:0},
+        {id:"plaque", l:"刻花瓷版画", d:0},
+        {id:"sculpture", l:"青瓷雕塑", d:0}
+    ]
+};
+
+const sceneMapping = {
+    "dinnerware": [
+        { id: "grand_round", label: "中餐大圆桌", p: "on a large traditional Chinese round dining table, luxury setting" },
+        { id: "long_table", label: "西餐长桌", p: "on a minimalist modern long dining table" },
+        { id: "square_table", label: "温馨方桌", p: "on a cozy family square wooden table" }
+    ],
+    "tea": [
+        { id: "tatami", label: "禅茶室 (榻榻米)", p: "on a low Japanese tatami tea table, garden background" },
+        { id: "master_desk", label: "专业茶台", p: "on a professional stone or wood tea ceremony table" },
+        { id: "desk_corner", label: "单人书室", p: "on a scholar's wooden desk corner" }
+    ],
+    "coffee": [
+        { id: "cafe_corner", label: "现代咖啡角", p: "in a bright minimalist cafe corner" },
+        { id: "office_desk", label: "办公位", p: "on a clean professional office desk" }
+    ],
+    "decor": {
+        "vase": [{ id: "vase_scene", label: "条案/几页 (屏风前)", p: "on a traditional Chinese console table, silk screen background" }],
+        "lamp": [{ id: "lamp_scene", label: "卧室床头", p: "on a minimalist bedside table, soft interior lighting" }],
+        "plaque": [{ id: "plaque_scene", label: "博古架/挂墙", p: "displayed on a luxury wooden gallery shelf" }],
+        "sculpture": [{ id: "sculpture_scene", label: "玄关展示", p: "placed in a high-end foyer entrance cabinet" }]
+    }
+};
+
+const moodMapping = {
+    "dinnerware": [
+        { id: "m1", label: "家庭聚餐 (温暖)", s: "warm family gathering atmosphere, soft yellow lighting, reunion feel" },
+        { id: "m2", label: "宴请宾客 (高雅)", s: "elegant banquet lighting, high-end hotel restaurant vibe, luxury" },
+        { id: "m3", label: "家居日常 (轻松)", s: "casual daily life atmosphere, bright natural daylight, simple lifestyle" }
+    ],
+    "tea": [
+        { id: "m4", label: "禅意静思 (静谧)", s: "zen silence, wabi-sabi style, shadows of bamboo, morning mist" },
+        { id: "m5", label: "茶艺表演 (高雅)", s: "formal tea ceremony style, theatrical lighting, sophisticated" },
+        { id: "m6", label: "亲友茶会 (温暖)", s: "friendly gathering, relaxed tea time, warm and cozy social vibe" }
+    ],
+    "coffee": [
+        { id: "m7", label: "家庭温馨", s: "homey morning coffee vibe, soft focus background, comfortable" },
+        { id: "m8", label: "办公高级", s: "modern executive office style, sharp professional lighting" },
+        { id: "m9", label: "单人随意", s: "solitary relaxing moment, cinematic moody light, personal time" }
+    ],
+    "decor": [
+        { id: "m10", label: "中式装饰", s: "traditional Chinese aesthetic, ink wash style, classic heritage" },
+        { id: "m11", label: "西式装饰", s: "modern western interior design, minimalist, clean lines" },
+        { id: "m12", label: "日韩装饰", s: "Muji style, natural wood, zen minimalist, soft tones" },
+        { id: "m13", label: "美式装饰", s: "American classic interior, retro luxury, heavy wood textures" }
+    ]
+};
+
+function pushStep(nextId) {
+    if (!nextId) return;
+
+    if (nextId === 'step_category') {
+        renderProductGallery();
+    }
+
+    if (nextId === 'step4') {
+        const grid = document.getElementById("sceneOptions");
+        grid.innerHTML = "";
+        let scenes = (formData.category === 'decor') ?
+            (sceneMapping.decor[Object.keys(formData.items).find(k => formData.items[k] > 0)] || []) :
+            (sceneMapping[formData.category] || []);
+
+        scenes.forEach(s => {
+            const btn = document.createElement("button");
+            btn.innerText = s.label;
+            btn.onclick = () => { formData.scene_prompt = s.p; setChoice('scene', s.id, s.label, 'step5'); };
+            grid.appendChild(btn);
+        });
+    }
+
+    if (nextId === 'step5') {
+        const grid = document.getElementById("moodOptions");
+        grid.innerHTML = "";
+        let moods = moodMapping[formData.category] || moodMapping["dinnerware"];
+        moods.forEach(m => {
+            const btn = document.createElement("button");
+            btn.innerText = m.label;
+            btn.onclick = () => { formData.style = m.s; setChoice('mood', m.id, m.label, null); };
+            grid.appendChild(btn);
+        });
+    }
+
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById(nextId).classList.add("active");
+    if (historyStack[historyStack.length - 1] !== nextId) historyStack.push(nextId);
+    updateUI();
+}
+
+function popStep() {
+    if (historyStack.length <= 1) return;
+    historyStack.pop();
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById(historyStack[historyStack.length - 1]).classList.add("active");
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById("prevBtn").disabled = historyStack.length <= 1;
+    document.getElementById("bar").style.width = (historyStack.length / 6) * 100 + "%";
+
+    const hint = document.getElementById("deliveryHint");
+    if (formData.purpose === 'gift') {
+      hint.innerText = "1. 产品展示视角 | 2. 礼盒嵌套展示 | 3. 商务送礼氛围图";
+    } else {
+      hint.innerText = "1. 产品展示视角 | 2. 居家使用环境 | 3. 亲友共享/社交氛围图";
+    }
+    updateSummary();
+}
+
+function setChoice(key, id, label, nextId) {
+    formData[key] = id;
+    formData[key + "_label"] = label;
+    if (key === 'purpose' && id !== 'gift') {
+        formData.packaging = 'none';
+        formData.packaging_label = '&#x7CFB;&#x7EDF;&#x9ED8;&#x8BA4;';
+        document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    // 如果是选择了氛围感（最后一步）
+    if (key === 'mood') {
+        const genBtn = document.getElementById("genBtn");
+        genBtn.disabled = false;
+        genBtn.style.background = "var(--primary-color)";
+        genBtn.style.cursor = "pointer";
+        genBtn.innerText = "开始 AI 渲染生成 (共3张)";
+    }
+
+    updateSummary();
+    updatePackagingSection();
+    if (nextId) pushStep(nextId);
+}
+
+function setPackaging(id, label) {
+    formData.packaging = id;
+    formData.packaging_label = label;
+    document.querySelectorAll(".pkg-card").forEach(c => c.classList.remove("selected"));
+    document.getElementById("pkg_" + id).classList.add("selected");
+    updateSummary();
+}
+
+function selectCategory(id, label) {
+    formData.category = id;
+    formData.category_label = label;
+    formData.items = {};
+    document.getElementById("constraintHint").style.display = (id === 'decor') ? "block" : "none";
+    const cont = document.getElementById("quantityContainer");
+    cont.innerHTML = '';
+
+    categoryDefaults[id].forEach(item => {
+        if (id !== 'decor') formData.items[item.id] = item.d;
+        const div = document.createElement("div");
+        div.className = "quantity-row";
+        if (id === 'decor') {
+            div.style.cursor = "pointer";
+            div.innerHTML = `<span>${item.l}</span><span style="color:#999;font-size:12px;">点击选择单件</span><button onclick="event.stopPropagation(); openCeramicFusion('${item.id}')" style="margin-left:10px;">打开瓷韵融合</button>`;
+            div.onclick = () => {
+                formData.items = {}; formData.items[item.id] = 1;
+                document.querySelectorAll(".quantity-row").forEach(r => r.classList.remove("row-selected"));
+                div.classList.add("row-selected");
+                updateSummary();
+            };
+        } else {
+            div.innerHTML = `<span>${item.l}</span><div class="counter">
+                <button onclick="changeQty('${item.id}', -1)">-</button>
+                <input id="q_${item.id}" value="${item.d}" readonly>
+                <button onclick="changeQty('${item.id}', 1)">+</button>
+                <button onclick="openCeramicFusion('${item.id}')" style="margin-left:10px;">打开瓷韵融合</button>
+            </div>`;
+        }
+        cont.appendChild(div);
+    });
+    updatePackagingSection();
+    pushStep("step_quantity");
+}
+
+function changeQty(id, delta) {
+    const input = document.getElementById("q_"+id);
+    let v = Math.max(0, parseInt(input.value) + delta);
+    input.value = v;
+    formData.items[id] = v;
+    updateSummary();
+}
+
+function updateSummary() {
+    const summary = document.getElementById("summaryDetail");
+    const productLine = formData.selected_product_label
+        ? `${formData.selected_product_label} (${formData.selected_product_category}/${formData.selected_product_file})`
+        : "&#x672A;&#x9009;&#x62E9;";
+    const fusionLine = formData.fusion_linked
+        ? formData.fused_product_path
+        : "&#x5F85;&#x74F7;&#x97F5;&#x56DE;&#x6D41;";
+    const packagingLine = formData.purpose === 'gift'
+        ? ` | <span class="badge">&#x5305;&#x88C5;</span> ${formData.packaging_label}`
+        : "";
+    summary.innerHTML = `
+        <span class="badge">&#x5BA2;&#x6237;</span> <b>${formData.customer_name || "&#x672A;&#x586B;"}</b> | <span class="badge">&#x8054;&#x7CFB;</span> ${formData.customer_contact || "&#x672A;&#x586B;"}<br>
+        <span class="badge">&#x91C9;&#x8272;</span> <b style="color:var(--primary-color)">${formData.glaze_label}</b> |
+        <span class="badge">&#x7B56;&#x7565;</span> <b>${formData.model_label}</b><br>
+        <span class="badge">&#x7528;&#x9014;</span> <b>${formData.purpose_label || "&#x672A;&#x9009;"}</b><br>
+        <span class="badge">&#x5668;&#x5F62;</span> ${productLine}${packagingLine}<br>
+        <span class="badge">&#x74F7;&#x97F5;&#x521D;&#x7A3F;</span> ${fusionLine}<br>
+        <span class="badge">&#x573A;&#x666F;</span> ${formData.scene_label} | <span class="badge">&#x6C1B;&#x56F4;</span> ${formData.mood_label}
+    `;
+}
+
+function updatePackagingSection() {
+    const section = document.getElementById("packagingSection");
+    if (!section) return;
+    section.style.display = formData.purpose === 'gift' ? "block" : "none";
+}
+
+function goToSceneStep() {
+    if (Object.keys(formData.items).length === 0) {
+        alert("\u8bf7\u9009\u62e9\u5668\u76bf");
+        return;
+    }
+    if (!formData.fusion_linked) {
+        alert("\u8bf7\u5148\u5173\u8054\u74f7\u97f5\u751f\u6210\u7684\u4ea7\u54c1\u521d\u7a3f");
+        return;
+    }
+    if (formData.purpose === 'gift' && formData.packaging === 'none') {
+        alert("\u8bf7\u9009\u62e9\u5546\u52a1\u9988\u8d60\u5305\u88c5");
+        return;
+    }
+    pushStep('step4');
+}
+
+function openCeramicFusion() {
+    if (!formData.glaze) {
+        alert("\u8bf7\u5148\u9009\u62e9\u91c9\u8272");
+        return;
+    }
+    if (!formData.selected_product_id) {
+        alert("\u8bf7\u5148\u9009\u62e9\u4ea7\u54c1\u5668\u5f62\u56fe");
+        return;
+    }
+    const runtime = glazeRuntime[formData.glaze] || glazeRuntime.fenqing;
+    const product = productCatalog.find(p => p.id === formData.selected_product_id);
+    const params = new URLSearchParams({
+        glaze: runtime.glazeFile,
+        glazeCode: runtime.glazeCode,
+        category: product.category,
+        productFile: product.file,
+        customer: formData.customer_name,
+        source: "SceneForge"
+    });
+    const detail = document.getElementById("fusionReturnDetail");
+    detail.innerHTML = `
+        <b>CeramicFusion pseudo jump</b><br>
+        Target: D:\\PixelSmile\\CeramicFusion\\?${params.toString()}<br>
+        Expected output folder: D:\\PixelSmile\\imgs\\${product.category}\\customers\\${formData.customer_name}<br>
+        This screen is a placeholder only. It records the handoff point but does not open CeramicFusion yet.
+    `;
+    pushStep("step_fusion_return");
+}
+
+function linkCustomerProduct() {
+    const product = productCatalog.find(p => p.id === formData.selected_product_id);
+    if (!product) return;
+    formData.fusion_linked = true;
+    formData.fused_product_path = `D:\\PixelSmile\\imgs\\${product.category}\\customers\\${formData.customer_name}`;
+    const cont = document.getElementById("quantityContainer");
+    cont.innerHTML = `
+        <div class="quantity-row row-selected">
+            <span><b>${formData.selected_product_label}</b><br><small>${formData.fused_product_path}</small></span>
+            <span class="badge">&#x5DF2;&#x5173;&#x8054;&#x74F7;&#x97F5;&#x4EA7;&#x54C1;&#x521D;&#x7A3F;</span>
+        </div>
+    `;
+    updatePackagingSection();
+    updateSummary();
+    pushStep("step_quantity");
+}
+
+async function generate() {
+    if (Object.keys(formData.items).length === 0) { alert("请选择器皿"); return; }
+    const btn = document.getElementById("genBtn");
+    btn.disabled = true;
+    document.getElementById("loading").style.display = "block";
+    try {
+        const res = await fetch("http://127.0.0.1:8000/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...formData, mood_label: formData.mood_label, custom: document.getElementById("customInput").value })
+        });
+        const data = await res.json();
+        const resDiv = document.getElementById("results");
+        resDiv.innerHTML = "";
+        // 修改 generate() 函数内的循环
+data.images.forEach((url, index) => {
+    const card = document.createElement("div");
+    card.className = "image-card";
+    const titles = formData.purpose === 'gift' ?
+      ['产品展示视角', '礼盒效果展示', '送礼氛围场景'] :
+      ['产品展示视角', '生活环境氛围', '社交共享氛围'];
+
+    const fullUrl = `http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}`;
+
+    card.innerHTML = `
+      <div style="font-weight:bold; margin-bottom:5px; color:var(--primary-color);">视角 ${index+1}: ${titles[index]}</div>
+      <img src="${fullUrl}" style="cursor: zoom-in;" onclick="showZoom('${fullUrl}')">
+      <button class="btn-main" style="width:100%; margin-top:10px;" onclick="downloadImage('${fullUrl}', 'Hearth_Studio_${titles[index]}.jpg')">
+        📥 下载此氛围图
+      </button>
+    `;
+    resDiv.appendChild(card);
+});
+
+// 生成完成后，显示顶部的正式定制按钮
+document.getElementById("formalOrderBtn").style.display = "inline-block";
+    } catch(e) { alert("生成失败，请检查后端服务"); }
+    finally { btn.disabled = false; document.getElementById("loading").style.display = "none"; }
+}
+
+function resetAll() { if(confirm("重置所有选择？")) location.reload(); }
+function showZoom(url) {
+    const overlay = document.getElementById("overlay");
+    const img = document.getElementById("overlayImg");
+    img.src = url;
+    overlay.style.display = "flex";
+}
+// 下载功能
+async function downloadImage(url, filename) {
+    try {
+        // 使用 fetch 获取图片数据
+        const response = await fetch(url);
+        const blob = await response.blob(); // 转换为二进制数据
+
+        // 创建一个指向该 Blob 的临时 URL
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        // 创建隐藏的下载链接
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename; // 此时 download 属性将生效
+
+        document.body.appendChild(a);
+        a.click();
+
+        // 清理现场
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+    } catch (error) {
+        console.error("下载失败:", error);
+        // 如果 fetch 失败（可能是跨域限制），则回退到普通打开方式
+        window.open(url, '_blank');
+    }
+}
+
+// 进入正式定制环节
+function goToFormalOrder() {
+    const confirmMsg = `
+您当前的氛围选择：
+- 材质基调：${formData.category_label}
+- 空间场景：${formData.scene_label}
+- 艺术风格：${formData.mood_label}
+
+点击确定将进入正式定制流程（包括器皿器型选择、釉下刻花方案及 Logo 最终位置确认）。
+    `;
+    if(confirm(confirmMsg)) {
+        // 此处跳转到你的正式定制页面或后端 API
+        alert("正在为您开启 Hearth Studio 深度定制系统...");
+        window.location.href = "/formal-customization"; // 示例跳转
+    }
+}
+</script>
+<div id="overlay" onclick="this.style.display='none'">
+  <img id="overlayImg" src="">
+</div>
+</body>
+</html>

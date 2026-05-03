@@ -1,69 +1,74 @@
 {
   "1": {
+    "class_type": "LoadImage",
     "inputs": {
-      "ckpt_name": "realisticVisionV60B1_v51HyperVAE.safetensors"
-    },
-    "class_type": "CheckpointLoaderSimple"
+      "image": ""
+    }
   },
   "2": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "realvisxlV50_v50LightningBakedvae.safetensors"
+    }
+  },
+  "3": {
+    "class_type": "LoraLoader",
     "inputs": {
       "lora_name": "CeramicXL_LoRA.safetensors",
       "strength_model": 0.6,
       "strength_clip": 1.0,
-      "model": ["1", 0],
-      "clip": ["1", 1]
-    },
-    "class_type": "LoraLoader"
-  },
-  "3": {
-    "inputs": {
-      "text": "MASTERPIECE, cinematic atmosphere, (celadon tea set:1.2), soft lighting, large negative space, minimalist composition, highly detailed environment",
+      "model": ["2", 0],
       "clip": ["2", 1]
-    },
-    "class_type": "CLIPTextEncode"
+    }
   },
   "4": {
+    "class_type": "CLIPTextEncode",
     "inputs": {
-      "text": "blurry, low quality, distorted shapes, messy room, cluttered background, unrealistic lighting, deformed teapot, two spouts, extra spout, missing handle, deformed structure, invalid product design, symmetrical spouts",
-      "clip": ["2", 1]
-    },
-    "class_type": "CLIPTextEncode"
+      "text": "",
+      "clip": ["3", 1]
+    }
   },
   "5": {
+    "class_type": "CLIPTextEncode",
     "inputs": {
-      "width": 1344,
-      "height": 768,
-      "batch_size": 1
-    },
-    "class_type": "EmptyLatentImage"
+      "text": "low quality, bad anatomy, text, watermark, deformed",
+      "clip": ["3", 1]
+    }
   },
   "6": {
+    "class_type": "VAEEncode",
     "inputs": {
-      "seed": 123456789,
-      "steps": 8,
-      "cfg": 2.0,
-      "sampler_name": "dpmpp_sde",
-      "scheduler": "karras",
-      "denoise": 1.0,
-      "model": ["2", 0],
-      "positive": ["3", 0],
-      "negative": ["4", 0],
-      "latent_image": ["5", 0]
-    },
-    "class_type": "KSampler"
+      "pixels": ["1", 0],
+      "vae": ["2", 2]
+    }
   },
   "7": {
+    "class_type": "KSampler",
     "inputs": {
-      "samples": ["6", 0],
-      "vae": ["1", 2]
-    },
-    "class_type": "VAEDecode"
+      "seed": 0,
+      "steps": 20,
+      "cfg": 2.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.65,
+      "model": ["3", 0],
+      "positive": ["4", 0],
+      "negative": ["5", 0],
+      "latent_image": ["6", 0]
+    }
   },
   "8": {
+    "class_type": "VAEDecode",
     "inputs": {
-      "filename_prefix": "SceneForge_Vibe",
-      "images": ["7", 0]
-    },
-    "class_type": "SaveImage"
+      "samples": ["7", 0],
+      "vae": ["2", 2]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "Atmosphere_Custom",
+      "images": ["8", 0]
+    }
   }
 }

@@ -16,3 +16,19 @@ Asset Routing Update
 - All runtime image assets, including packaging images, have been moved to D:\PixelSmile\imgs.
 - D:\PixelSmile\imgs\Origin is backup-only and should not be used by application logic.
 - SceneForge should reference images from D:\PixelSmile\imgs during local development, but image assets should not be pushed to GitHub.
+
+SceneForge Atmosphere Flow Update
+
+- Before customization starts, collect customer name and contact in the persistent top bar. This is only used to match generated images to a customer.
+- Product shape selection now reads local product assets from D:\PixelSmile\imgs and records the selected product before CeramicFusion.
+- CeramicFusion handoff is currently a UI placeholder. Expected return path is D:\PixelSmile\imgs\<product-category>\customers\<customer-name>.
+- After CeramicFusion returns a fused product draft, SceneForge should use that draft as a fixed source image for atmosphere generation instead of regenerating product shape or count.
+
+Next SceneForge UI Changes
+
+- 0.1 core glaze selection should load glaze tile images from D:\PixelSmile\imgs\glaze and display each glaze as image plus text.
+- Glaze filename naming rule: glaze_<glaze-code>_<index>_new, where dy = Dingyao, fq = Fenqing, gytq = Guanyao Tianqing, mzq = Meiziqing, rytq = Ruyao Tianqing, yq = Yingqing.
+- Step 1.5 should be renamed from product shape image selection to "Select Product From Library".
+- Step 1.5 should first choose one product category from D:\PixelSmile\imgs: tableware, coffeeware, teaware, homedecor.
+- After a category is selected, display only image files directly under that category directory. Do not read child directories such as old_version or customers.
+- Business gift branch should also select packaging from D:\PixelSmile\imgs\package, displayed as selectable package images.
