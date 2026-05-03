@@ -1,4 +1,6 @@
 # Hearth Studio 釉色物理定义指南 (Glaze Definitions)
+用瓷片釉色图片来给模型明确的参考，在imgs目录中已经生成了10款瓷片釉色
+
 
 本文件定义了 Hearth Studio 核心产品的视觉物理特性，用于指导 AI 生成引擎准确模拟传统青瓷与影青的质感。
 

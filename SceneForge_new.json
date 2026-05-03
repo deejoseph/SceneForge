@@ -1,0 +1,102 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "realisticVisionV60B1_v51HyperVAE.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "2": {
+    "inputs": {
+      "lora_name": "CeramicXL_LoRA.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 1,
+      "model": ["1", 0],
+      "clip": ["1", 1]
+    },
+    "class_type": "LoraLoader"
+  },
+  "10": {
+    "inputs": {
+      "image": "glaze_mzq_1.png"
+    },
+    "class_type": "LoadImage"
+  },
+  "13": {
+    "inputs": {
+      "ipadapter_file": "ip-adapter-plus_sdxl_vit-h.safetensors"
+    },
+    "class_type": "IPAdapterModelLoader"
+  },
+  "14": {
+    "inputs": {
+      "clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+    },
+    "class_type": "CLIPVisionLoader"
+  },
+  "12": {
+    "inputs": {
+      "weight": 0.85,
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "embeds_scaling": "V only",
+      "model": ["2", 0],
+      "ipadapter": ["13", 0],
+      "image": ["10", 0],
+      "clip_vision": ["14", 0]
+    },
+    "class_type": "IPAdapterAdvanced"
+  },
+  "3": {
+    "inputs": {
+      "text": "MASTERPIECE, studio product photography, a single large ceramic dinner plate, minimalist form, following the exact glaze and clay texture of the reference image, high-end gallery quality, NO other objects",
+      "clip": ["2", 1]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "4": {
+    "inputs": {
+      "text": "blurry, low quality, (distorted shapes:1.2), patterns, crackles, rough surface, inconsistent color, multiple plates, background noise, (plastic finish:1.4)",
+      "clip": ["2", 1]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "5": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage"
+  },
+  "6": {
+    "inputs": {
+      "seed": 888888888,
+      "steps": 25,
+      "cfg": 3.5,
+      "sampler_name": "dpmpp_2m_sde",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": ["12", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler"
+  },
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecode"
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "Ceramic_Product_Reference_Guided",
+      "images": ["7", 0]
+    },
+    "class_type": "SaveImage"
+  }
+}

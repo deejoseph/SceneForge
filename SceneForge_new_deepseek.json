@@ -1,0 +1,84 @@
+﻿{
+  "last_node_id": 12,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "title": "加载瓷片图",
+      "outputs": [["IMAGE"]]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "title": "加载器形图",
+      "outputs": [["IMAGE"]]
+    },
+    {
+      "id": 3,
+      "type": "IPAdapterEncoder",
+      "title": "提取材质特征",
+      "inputs": [["IMAGE", 1]],
+      "outputs": [["EMBEDS"]]
+    },
+    {
+      "id": 4,
+      "type": "ControlNetDepth",
+      "title": "提取器形深度",
+      "inputs": [["IMAGE", 2]],
+      "outputs": [["CONTROL_NET", "DEPTH_MAP"]]
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "title": "初始化画布",
+      "inputs": [["INT", 768, "width"], ["INT", 768, "height"]],
+      "outputs": [["LATENT"]]
+    },
+    {
+      "id": 6,
+      "type": "KSampler",
+      "title": "合成采样",
+      "inputs": [
+        ["LATENT", 5],
+        ["EMBEDS", 3],
+        ["CONTROL_NET", 4]
+      ],
+      "outputs": [["LATENT"]]
+    },
+    {
+      "id": 7,
+      "type": "VAEDecode",
+      "title": "解码输出",
+      "inputs": [
+        ["LATENT", 6],
+        ["VAE", "vae"]
+      ],
+      "outputs": [["IMAGE"]]
+    },
+    {
+      "id": 8,
+      "type": "PreviewImage",
+      "title": "预览结果",
+      "inputs": [["IMAGE", 7]]
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "title": "保存陶瓷器皿",
+      "inputs": [
+        ["IMAGE", 7],
+        ["STRING", "ceramic_output"]
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 3, 0, "IMAGE"],
+    [2, 1, 0, 4, 0, "IMAGE"],
+    [3, 0, 0, 6, 1, "EMBEDS"],
+    [4, 0, 0, 6, 2, "CONTROL_NET"],
+    [5, 0, 0, 6, 0, "LATENT"],
+    [6, 0, 0, 7, 0, "LATENT"],
+    [7, 0, 0, 8, 0, "IMAGE"],
+    [7, 0, 0, 9, 0, "IMAGE"]
+  ]
+}

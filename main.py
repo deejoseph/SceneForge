@@ -41,6 +41,7 @@ TRANSLATION_MAP = {
 # ===== 3. 数据模型 =====
 class GenerateRequest(BaseModel):
     model_type: str = "realistic"
+    glaze: str = "fenqing"
     purpose: str                  # "personal" 或 "gift"
     category: str
     items: Dict[str, int]
@@ -79,6 +80,42 @@ GLAZE_LIBRARY = {
         "highly dense body, (thick opacified glaze:1.2), resembling the texture of fine jade, "
         "color is a delicate pale watery-green, viscous and rich glaze, bright lustrous finish"
     )
+}
+
+GLAZE_ENGINE_CONFIG = {
+    "fenqing": {
+        "model_type": "realistic",
+        "ckpt": "realvisxlV50_v50LightningBakedvae.safetensors",
+        "steps": 10,
+        "cfg": 1.8,
+        "width": 1344,
+        "height": 768,
+        "sampler": "dpmpp_sde",
+        "scheduler": "karras",
+        "lora_weight": 0.6,
+    },
+    "meiziqing": {
+        "model_type": "artistic",
+        "ckpt": "dreamshaperXL_lightningDPMSDE.safetensors",
+        "steps": 10,
+        "cfg": 2.0,
+        "width": 1344,
+        "height": 768,
+        "sampler": "dpmpp_sde",
+        "scheduler": "karras",
+        "lora_weight": 0.8,
+    },
+    "yingqing": {
+        "model_type": "fast",
+        "ckpt": "epiCrealism.safetensors",
+        "steps": 20,
+        "cfg": 5.0,
+        "width": 768,
+        "height": 512,
+        "sampler": "dpmpp_2m",
+        "scheduler": "karras",
+        "lora_weight": 0.6,
+    },
 }
 
 # 品牌标识 (Logo) 的物理呈现
@@ -150,12 +187,15 @@ def build_delivery_prompts(req: GenerateRequest) -> List[str]:
 
 # ===== 5. ComfyUI 交互逻辑 =====
 
-def call_comfy(prompt_text, seed, ckpt_name, model_type):
-    is_xl = "XL" in ckpt_name or "xl" in ckpt_name
-    steps, cfg = (8, 2.0) if is_xl else (20, 5.0)
-    width, height = (1344, 768) if is_xl else (768, 512)
-    sampler = "dpmpp_sde" if is_xl else "dpmpp_2m"
-    lora_weight = 0.8 if model_type == "artistic" else 0.6
+def call_comfy(prompt_text, seed, engine_config):
+    ckpt_name = engine_config["ckpt"]
+    steps = engine_config["steps"]
+    cfg = engine_config["cfg"]
+    width = engine_config["width"]
+    height = engine_config["height"]
+    sampler = engine_config["sampler"]
+    scheduler = engine_config["scheduler"]
+    lora_weight = engine_config["lora_weight"]
     
     workflow = {
         "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": ckpt_name } },
@@ -163,7 +203,7 @@ def call_comfy(prompt_text, seed, ckpt_name, model_type):
         "3": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt_text, "clip": ["2", 1] } },
         "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "low quality, bad anatomy, text, watermark, (two spouts:1.5), deformed", "clip": ["2", 1] } },
         "5": { "class_type": "EmptyLatentImage", "inputs": { "width": width, "height": height, "batch_size": 1 } },
-        "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": "karras", "denoise": 1.0, "model": ["2", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["5", 0] } },
+        "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": scheduler, "denoise": 1.0, "model": ["2", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["5", 0] } },
         "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["1", 2] } },
         "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "Ceramic_Custom", "images": ["7", 0] } }
     }
@@ -196,16 +236,16 @@ def get_images(prompt_id):
 
 @app.post("/generate")
 def generate(req: GenerateRequest):
-    ckpt_name = MODEL_MAP.get(req.model_type, MODEL_MAP["realistic"])
+    engine_config = GLAZE_ENGINE_CONFIG.get(req.glaze, GLAZE_ENGINE_CONFIG["fenqing"])
     prompts = build_delivery_prompts(req)
     image_urls = []
     prompt_ids = []
 
-    print(f"--- 启动交付级渲染 | 类别: {req.category} | 用途: {req.purpose} ---")
+    print(f"--- 启动交付级渲染 | 釉色: {req.glaze} | 引擎: {engine_config['model_type']} | 类别: {req.category} | 用途: {req.purpose} ---")
 
     for p_text in prompts:
         seed = int(uuid.uuid4().int % 1e9)
-        res = call_comfy(p_text, seed, ckpt_name, req.model_type)
+        res = call_comfy(p_text, seed, engine_config)
         if "prompt_id" in res:
             prompt_ids.append(res["prompt_id"])
 

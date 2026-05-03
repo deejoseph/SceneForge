@@ -1,0 +1,18 @@
+Phase 2: Visual Prompt Stress Testing
+
+Current Best Glaze Anchors
+
+- Fenqing:
+  (Masterpiece:1.2), exquisite Powder Celadon (Fenqing), solid stoneware body, thick opaque glaze, color is a delicate pale bluish-celadon, strong (bluish undertone:1.3), immaculate and uniform surface, no crackles, smooth polished finish, soft diffused studio lighting.
+
+- Meiziqing:
+  (Masterpiece:1.2), premium Meiziqing celadon, thick opacified lime-alkali glaze, color is a lush (fresh bluish-green:1.2), strictly avoiding sky blue, liquid-like glossy finish with deep luster, viscous and rich texture, no transparency, solid heavy stoneware body.
+
+- Yingqing:
+  (Masterpiece:1.2), premium Hutian Yingqing celadon, pure modern white porcelain substrate, highly dense and smooth body, (thick opacified glaze:1.2), resembling the texture of fine jade, color is a delicate pale watery-green, subtle shadow-green tint, viscous and rich glaze appearance, bright lustrous finish, deep reflections with a soft edge.
+
+Asset Routing Update
+
+- All runtime image assets, including packaging images, have been moved to D:\PixelSmile\imgs.
+- D:\PixelSmile\imgs\Origin is backup-only and should not be used by application logic.
+- SceneForge should reference images from D:\PixelSmile\imgs during local development, but image assets should not be pushed to GitHub.

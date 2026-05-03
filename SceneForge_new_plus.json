@@ -1,0 +1,136 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "realisticVisionV60B1_v51HyperVAE.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+
+  "2": {
+    "inputs": {
+      "lora_name": "CeramicXL_LoRA.safetensors",
+      "strength_model": 0.4,
+      "strength_clip": 1,
+      "model": ["1", 0],
+      "clip": ["1", 1]
+    },
+    "class_type": "LoraLoader"
+  },
+
+  "10": {
+    "inputs": {
+      "image": "glaze_mzq_1.png"
+    },
+    "class_type": "LoadImage"
+  },
+
+  "20": {
+    "inputs": {
+      "image": "shape_reference.png"
+    },
+    "class_type": "LoadImage"
+  },
+
+  "13": {
+    "inputs": {
+      "ipadapter_file": "ip-adapter-plus_sdxl_vit-h.safetensors"
+    },
+    "class_type": "IPAdapterModelLoader"
+  },
+
+  "14": {
+    "inputs": {
+      "clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+    },
+    "class_type": "CLIPVisionLoader"
+  },
+
+  "12": {
+    "inputs": {
+      "weight": 0.6,
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0.2,
+      "end_at": 0.9,
+      "embeds_scaling": "V only",
+      "model": ["2", 0],
+      "ipadapter": ["13", 0],
+      "image": ["10", 0],
+      "clip_vision": ["14", 0]
+    },
+    "class_type": "IPAdapterAdvanced"
+  },
+
+  "30": {
+    "inputs": {
+      "control_net_name": "control_v11f1p_sd15_depth.pth"
+    },
+    "class_type": "ControlNetLoader"
+  },
+
+  "31": {
+    "inputs": {
+      "image": ["20", 0],
+      "control_net": ["30", 0],
+      "strength": 1.0
+    },
+    "class_type": "ControlNetApply"
+  },
+
+  "3": {
+    "inputs": {
+      "text": "MASTERPIECE, studio product photography, use the exact shape from the reference image, do not change geometry, silhouette or proportions, apply glaze strictly from glaze reference image, uniform celadon glaze, smooth clean ceramic surface, fine porcelain material, high-end craftsmanship, single object, centered, white background",
+      "clip": ["2", 1]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+
+  "4": {
+    "inputs": {
+      "text": "(deformed shape:1.5), altered proportions, distorted geometry, multiple objects, patterns, uneven glaze, dirty colors, rough surface, plastic, metal, glass",
+      "clip": ["2", 1]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+
+  "5": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage"
+  },
+
+  "6": {
+    "inputs": {
+      "seed": 888888888,
+      "steps": 32,
+      "cfg": 4.5,
+      "sampler_name": "dpmpp_2m_sde",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": ["12", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler"
+  },
+
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecode"
+  },
+
+  "8": {
+    "inputs": {
+      "filename_prefix": "Ceramic_Product_Shape_Glaze_Binding",
+      "images": ["7", 0]
+    },
+    "class_type": "SaveImage"
+  }
+}

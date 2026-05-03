@@ -18,16 +18,16 @@
   button:disabled { border-color: #ccc; color: #ccc; cursor: not-allowed; }
   .btn-main { background: var(--primary-color); color: white; font-weight: bold; border: none; }
   .options-grid { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-  
+
   /* 包装卡片样式 */
-  .pkg-card { 
-    border: 2px solid #eee; 
-    border-radius: 8px; 
-    cursor: pointer; 
-    width: 220px; 
-    text-align: center; 
-    transition: 0.3s; 
-    background: #fff; 
+  .pkg-card {
+    border: 2px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 220px;
+    text-align: center;
+    transition: 0.3s;
+    background: #fff;
     overflow: hidden;
   }
   .pkg-card:hover { border-color: var(--primary-color); transform: translateY(-5px); }
@@ -84,10 +84,10 @@
     <button id="prevBtn" onclick="popStep()" disabled>⬅ 上一步</button>
     <button onclick="resetAll()" style="margin-left: 10px;">🔄 重新开始</button>
   </div>
-  
+
   <div id="actionArea">
-    <button id="formalOrderBtn" class="btn-main" 
-            onclick="goToFormalOrder()" 
+    <button id="formalOrderBtn" class="btn-main"
+            onclick="goToFormalOrder()"
             style="display:none; background: #c49a6c; border: none; padding: 12px 25px;">
       ✨ 场景已确认，进入正式定制环节
     </button>
@@ -95,21 +95,17 @@
 </div>
 
 <div class="step active" id="step0">
-  <h3>0.1 选择渲染引擎</h3>
-  <div class="options-grid">
-    <button id="engine_realistic" onclick="setChoice('model_type', 'realistic', '高清写实', null)">高清写实 (旗舰引擎)</button>
-    <button id="engine_artistic" onclick="setChoice('model_type', 'artistic', '意境艺术', null)">意境艺术 (旗舰引擎)</button>
-    <button id="engine_fast" onclick="setChoice('model_type', 'fast', '快速预览', null)">快速预览 (轻量引擎)</button>
+  <h3>0.1 选择核心釉色</h3>
+  <div style="font-size:13px; color:#666; margin-bottom:12px;">
+    釉色会在后台自动决定渲染引擎、提示词锚点和参数，客户无需选择引擎。
   </div>
-    
-  <h3 style="margin-top:25px;">0.2 选择核心釉色</h3>
   <div class="options-grid">
     <button id="glaze_fenqing" onclick="setGlaze('fenqing', '粉青釉')">粉青釉 (温润如脂)</button>
     <button id="glaze_meiziqing" onclick="setGlaze('meiziqing', '梅子青')">梅子青 (青翠欲滴)</button>
     <button id="glaze_yingqing" onclick="setGlaze('yingqing', '影青釉')">影青釉 (瓷胎玉感)</button>
   </div>
-  
-  <button class="btn-main" style="margin-top:30px; width:100%;" id="startBtn" onclick="pushStep('step1')" disabled>请先选择引擎与釉色</button>
+
+  <button class="btn-main" style="margin-top:30px; width:100%;" id="startBtn" onclick="pushStep('step1')" disabled>请先选择釉色</button>
 </div>
 
 <div class="step" id="step1">
@@ -178,18 +174,18 @@
     </div>
   </div>
   <input type="text" id="customInput" style="width:100%; padding:12px; margin:10px 0; box-sizing:border-box;" placeholder="补充需求：如背景加一支梅花...">
-  <button class="btn-main" id="genBtn" onclick="generate()" 
-        style="padding: 15px 40px; font-size: 18px; background: #ccc; cursor: not-allowed;" 
+  <button class="btn-main" id="genBtn" onclick="generate()"
+        style="padding: 15px 40px; font-size: 18px; background: #ccc; cursor: not-allowed;"
         disabled>完成氛围选择后开启渲染</button>
   <div id="loading" style="display:none; color:var(--primary-color); margin:20px 0; font-weight:bold;">AI 正在渲染三个维度的构图，请稍候...</div>
   <div id="results"></div>
 </div>
 
 <script>
-let historyStack = ["step0"]; 
+let historyStack = ["step0"];
 let formData = {
   glaze: "", glaze_label: "未选择",
-  model_type: "realistic", model_label: "高清写实",
+  model_type: "", model_label: "由釉色自动匹配",
   purpose: "", purpose_label: "",
   category: "dinnerware", category_label: "",
   items: {},
@@ -199,26 +195,58 @@ let formData = {
   style: ""
 };
 
+const glazeRuntime = {
+    fenqing: { model_type: "realistic", model_label: "粉青釉专用写实引擎", glazeCode: "fq", glazeFile: "glaze_fq_1_new.png" },
+    meiziqing: { model_type: "artistic", model_label: "梅子青高光质感引擎", glazeCode: "mzq", glazeFile: "glaze_mzq_1_new.png" },
+    yingqing: { model_type: "fast", model_label: "影青釉快速预览引擎", glazeCode: "yq", glazeFile: "glaze_yq_1_new.png" }
+};
+
+const ceramicFusionProducts = {
+    dinner_plate: { category: "tableware", product: "no_bg_plate_l_2_new.png" },
+    medium_plate: { category: "tableware", product: "no_bg_plate_m_1_new.png" },
+    bowl: { category: "tableware", product: "no_bg_bowl_1_new.png" },
+    sauce_dish: { category: "tableware", product: "no_bg_sauce_dish_1_new.png" },
+    large_pot: { category: "tableware", product: "no_bg_fruit_bowl_1_new.png" },
+    teapot: { category: "teaware", product: "no_bg_teapot_1_new.png" },
+    gaiwan: { category: "teaware", product: "no_bg_gaiwan_1_new.png" },
+    fair_cup: { category: "teaware", product: "no_bg_fairness_cup_1_new.png" },
+    tea_cup: { category: "teaware", product: "no_bg_teacup_1_new.png" },
+    tea_sea: { category: "teaware", product: "no_bg_tea_basin_1_new.png" },
+    tea_tray: { category: "teaware", product: "no_bg_tea_basin_1_new.png" },
+    tea_wash: { category: "teaware", product: "no_bg_tea_basin_1_new.png" },
+    incense_burner: { category: "teaware", product: "no_bg_incense_burner_1_new.png" },
+    coffee_pot: { category: "coffeeware", product: "no_bg_coffee_pot_1_new.png" },
+    coffee_cup: { category: "coffeeware", product: "no_bg_cup_saucer_1_new.png" },
+    mug: { category: "coffeeware", product: "no_bg_mug_1_new.png" },
+    vase: { category: "homedecor", product: "no_bg_vase_mei_1.png" },
+    lamp: { category: "homedecor", product: "no_bg_vase_lamp_base_1.png" },
+    plaque: { category: "homedecor", product: "no_bg_plaque_1.png" },
+    sculpture: { category: "homedecor", product: "no_bg_Sculpture_1.png" }
+};
+
 function setGlaze(id, label) {
     formData.glaze = id;
     formData.glaze_label = label;
-    
+    const runtime = glazeRuntime[id] || glazeRuntime.fenqing;
+    formData.model_type = runtime.model_type;
+    formData.model_label = runtime.model_label;
+
     // UI 高亮切换：增加背景色切换，视觉反馈更强
     document.querySelectorAll("[id^='glaze_']").forEach(b => {
         b.style.borderColor = "#eee";
-        b.style.background = "white"; 
+        b.style.background = "white";
     });
     const activeBtn = document.getElementById("glaze_" + id);
     activeBtn.style.borderColor = "var(--primary-color)";
     activeBtn.style.background = "#f0f4f2"; // 选中的浅绿色背景
-    
+
     checkStep0Completion();
     updateSummary();
 }
 
 function checkStep0Completion() {
     const btn = document.getElementById("startBtn");
-    if (formData.model_type && formData.glaze) {
+    if (formData.glaze) {
         btn.disabled = false;
         btn.innerText = "开启定制之旅 ➔";
         btn.style.background = "var(--primary-color)"; // 变色提醒
@@ -227,12 +255,12 @@ function checkStep0Completion() {
     } else {
         // 增加反向锁定逻辑，确保万无一失
         btn.disabled = true;
-        btn.innerText = "请先选择引擎与釉色";
+        btn.innerText = "请先选择釉色";
         btn.style.background = "#ccc";
         btn.style.cursor = "not-allowed";
     }
 }
-    
+
 const categoryDefaults = {
     "dinnerware": [
         {id:"dinner_plate", l:"大盘", d:6}, {id:"medium_plate", l:"中盘", d:6},
@@ -247,9 +275,9 @@ const categoryDefaults = {
         {id:"coffee_pot", l:"咖啡壶", d:1}, {id:"coffee_cup", l:"咖啡杯碟", d:2}, {id:"mug", l:"马克杯(Mug)", d:2}
     ],
     "decor": [
-        {id:"vase", l:"精美花瓶", d:1}, 
-        {id:"lamp", l:"艺术台灯", d:0}, 
-        {id:"plaque", l:"刻花瓷版画", d:0}, 
+        {id:"vase", l:"精美花瓶", d:1},
+        {id:"lamp", l:"艺术台灯", d:0},
+        {id:"plaque", l:"刻花瓷版画", d:0},
         {id:"sculpture", l:"青瓷雕塑", d:0}
     ]
 };
@@ -307,10 +335,10 @@ function pushStep(nextId) {
     if (nextId === 'step4') {
         const grid = document.getElementById("sceneOptions");
         grid.innerHTML = "";
-        let scenes = (formData.category === 'decor') ? 
-            (sceneMapping.decor[Object.keys(formData.items).find(k => formData.items[k] > 0)] || []) : 
+        let scenes = (formData.category === 'decor') ?
+            (sceneMapping.decor[Object.keys(formData.items).find(k => formData.items[k] > 0)] || []) :
             (sceneMapping[formData.category] || []);
-        
+
         scenes.forEach(s => {
             const btn = document.createElement("button");
             btn.innerText = s.label;
@@ -339,7 +367,7 @@ function pushStep(nextId) {
 
 function popStep() {
     if (historyStack.length <= 1) return;
-    historyStack.pop(); 
+    historyStack.pop();
     document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
     document.getElementById(historyStack[historyStack.length - 1]).classList.add("active");
     updateUI();
@@ -348,7 +376,7 @@ function popStep() {
 function updateUI() {
     document.getElementById("prevBtn").disabled = historyStack.length <= 1;
     document.getElementById("bar").style.width = (historyStack.length / 6) * 100 + "%";
-    
+
     const hint = document.getElementById("deliveryHint");
     if (formData.purpose === 'gift') {
       hint.innerText = "1. 产品展示视角 | 2. 礼盒嵌套展示 | 3. 商务送礼氛围图";
@@ -366,7 +394,7 @@ function setChoice(key, id, label, nextId) {
         formData.packaging_label = '&#x7CFB;&#x7EDF;&#x9ED8;&#x8BA4;';
         document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
     }
-    
+
     // 如果是选择了氛围感（最后一步）
     if (key === 'mood') {
         const genBtn = document.getElementById("genBtn");
@@ -375,7 +403,7 @@ function setChoice(key, id, label, nextId) {
         genBtn.style.cursor = "pointer";
         genBtn.innerText = "开始 AI 渲染生成 (共3张)";
     }
-    
+
     updateSummary();
     updatePackagingSection();
     if (nextId) pushStep(nextId);
@@ -396,14 +424,14 @@ function selectCategory(id, label) {
     document.getElementById("constraintHint").style.display = (id === 'decor') ? "block" : "none";
     const cont = document.getElementById("quantityContainer");
     cont.innerHTML = '';
-    
+
     categoryDefaults[id].forEach(item => {
         if (id !== 'decor') formData.items[item.id] = item.d;
         const div = document.createElement("div");
         div.className = "quantity-row";
         if (id === 'decor') {
             div.style.cursor = "pointer";
-            div.innerHTML = `<span>${item.l}</span><span style="color:#999;font-size:12px;">点击选择单件</span>`;
+            div.innerHTML = `<span>${item.l}</span><span style="color:#999;font-size:12px;">点击选择单件</span><button onclick="event.stopPropagation(); openCeramicFusion('${item.id}')" style="margin-left:10px;">打开瓷韵融合</button>`;
             div.onclick = () => {
                 formData.items = {}; formData.items[item.id] = 1;
                 document.querySelectorAll(".quantity-row").forEach(r => r.classList.remove("row-selected"));
@@ -415,6 +443,7 @@ function selectCategory(id, label) {
                 <button onclick="changeQty('${item.id}', -1)">-</button>
                 <input id="q_${item.id}" value="${item.d}" readonly>
                 <button onclick="changeQty('${item.id}', 1)">+</button>
+                <button onclick="openCeramicFusion('${item.id}')" style="margin-left:10px;">打开瓷韵融合</button>
             </div>`;
         }
         cont.appendChild(div);
@@ -441,8 +470,8 @@ function updateSummary() {
         ? ` | <span class="badge">&#x5305;&#x88C5;</span> ${formData.packaging_label}`
         : "";
     summary.innerHTML = `
-        <span class="badge">&#x5F15;&#x64CE;</span> <b>${formData.model_label}</b> | 
-        <span class="badge">&#x91C9;&#x8272;</span> <b style="color:var(--primary-color)">${formData.glaze_label}</b><br>
+        <span class="badge">&#x91C9;&#x8272;</span> <b style="color:var(--primary-color)">${formData.glaze_label}</b> |
+        <span class="badge">&#x7B56;&#x7565;</span> <b>${formData.model_label}</b><br>
         <span class="badge">&#x7528;&#x9014;</span> <b>${formData.purpose_label || "&#x672A;&#x9009;"}</b><br>
         <span class="badge">&#x6E05;&#x5355;</span> ${itemStrs.length > 0 ? itemStrs.join(", ") : "&#x672A;&#x9009;&#x62E9;"}${packagingLine}<br>
         <span class="badge">&#x573A;&#x666F;</span> ${formData.scene_label} | <span class="badge">&#x6C1B;&#x56F4;</span> ${formData.mood_label}
@@ -467,6 +496,27 @@ function goToSceneStep() {
     pushStep('step4');
 }
 
+function openCeramicFusion(itemId) {
+    if (!formData.glaze) {
+        alert("请先选择釉色");
+        return;
+    }
+    const runtime = glazeRuntime[formData.glaze] || glazeRuntime.fenqing;
+    const product = ceramicFusionProducts[itemId];
+    if (!product) {
+        alert("当前产品还没有配置对应的瓷韵素材");
+        return;
+    }
+    const params = new URLSearchParams({
+        glaze: runtime.glazeFile,
+        glazeCode: runtime.glazeCode,
+        category: product.category,
+        product: product.product,
+        source: "SceneForge"
+    });
+    window.open(`http://127.0.0.1:8765/?${params.toString()}`, "_blank", "noopener");
+}
+
 async function generate() {
     if (Object.keys(formData.items).length === 0) { alert("请选择器皿"); return; }
     const btn = document.getElementById("genBtn");
@@ -485,12 +535,12 @@ async function generate() {
 data.images.forEach((url, index) => {
     const card = document.createElement("div");
     card.className = "image-card";
-    const titles = formData.purpose === 'gift' ? 
-      ['产品展示视角', '礼盒效果展示', '送礼氛围场景'] : 
+    const titles = formData.purpose === 'gift' ?
+      ['产品展示视角', '礼盒效果展示', '送礼氛围场景'] :
       ['产品展示视角', '生活环境氛围', '社交共享氛围'];
-    
+
     const fullUrl = `http://127.0.0.1:8000/download?url=${encodeURIComponent(url)}`;
-    
+
     card.innerHTML = `
       <div style="font-weight:bold; margin-bottom:5px; color:var(--primary-color);">视角 ${index+1}: ${titles[index]}</div>
       <img src="${fullUrl}" style="cursor: zoom-in;" onclick="showZoom('${fullUrl}')">
@@ -520,19 +570,19 @@ async function downloadImage(url, filename) {
         // 使用 fetch 获取图片数据
         const response = await fetch(url);
         const blob = await response.blob(); // 转换为二进制数据
-        
+
         // 创建一个指向该 Blob 的临时 URL
         const blobUrl = window.URL.createObjectURL(blob);
-        
+
         // 创建隐藏的下载链接
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = blobUrl;
         a.download = filename; // 此时 download 属性将生效
-        
+
         document.body.appendChild(a);
         a.click();
-        
+
         // 清理现场
         window.URL.revokeObjectURL(blobUrl);
         document.body.removeChild(a);
